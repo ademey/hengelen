@@ -75,3 +75,15 @@ body:not([data-page="location"]) #source-toggle{display:none}
 @media(max-width:750px){main#atlas-view{grid-template-columns:185px minmax(0,1fr)}#atlas-map-slot{height:650px;position:static}.detail-hero{grid-template-columns:1fr}#detail-map-slot{height:220px;width:100%}.detail-hero h1{font-size:30px}.detail-planning .timeline{padding:14px}.detail-planning .timeline-top{display:block}#detail-sessions .window{display:block}#location-information .inspector{columns:1}.detail-nav{align-items:flex-start;gap:8px}.detail-nav label{font-size:0}.detail-nav select{max-width:190px;font-size:11px}#location-view{padding:16px}}
 
 .detail-preferences{border-bottom:1px solid var(--rule);padding-bottom:16px;margin-bottom:22px}.detail-preferences label{font-size:11px;display:flex;justify-content:space-between}.detail-preferences input{width:100%;margin-top:12px}body[data-page="atlas"] .map-key span:not(:first-child){display:none}
+
+/* The desktop atlas is a single working surface; only its location list scrolls. */
+@media(min-width:751px){
+ body[data-page="atlas"]{height:100dvh;min-height:0;overflow:hidden;display:grid;grid-template-rows:76px auto minmax(0,1fr) auto}
+ body[data-page="atlas"] #atlas-view{height:100%;min-height:0;overflow:hidden}
+ body[data-page="atlas"] #atlas-map-slot{position:static;height:100%;min-height:0}
+ body[data-page="atlas"] #atlas-map-slot .map-wrap{height:auto;min-height:0;flex:1}
+ body[data-page="atlas"] .index{height:100%;min-height:0;overflow:hidden}
+ body[data-page="atlas"] #spot-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+ body[data-page="atlas"] .index-bottom{margin-top:16px;padding-top:16px}
+ body[data-page="atlas"] footer{min-height:0}
+}
