@@ -1,0 +1,11 @@
+{
+  "name": "hengelen",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "check": "node --check dist/app.js && node --check dist/domain.js && node --check dist/planner.js && node --check dist/timeline.js && node --check forecast.mjs && node --check server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

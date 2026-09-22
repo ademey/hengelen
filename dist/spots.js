@@ -1,0 +1,390 @@
+export const presets = [
+  {
+    "id": "stinson",
+    "name": "Stinson Beach",
+    "region": "MARIN",
+    "lon": -122.643,
+    "lat": 37.895,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414275",
+      "name": "Ocean Beach, outer coast",
+      "lat": 37.775,
+      "lon": -122.513,
+      "continuous": false
+    },
+    "currentStation": null,
+    "marine": [
+      -122.67,
+      37.87
+    ],
+    "bearing": 290,
+    "notes": "Beach fishing; check designated swimming areas. Eskoot Creek is closed to fishing. Expect surf exposure and keep your backcast clear of beach visitors.",
+    "source": "https://www.nps.gov/goga/stbe.htm",
+    "sourceLabel": "NPS beach guide",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "rodeo",
+    "name": "Rodeo Beach",
+    "lon": -122.537,
+    "lat": 37.83,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414275",
+      "name": "Ocean Beach, outer coast",
+      "lat": 37.775,
+      "lon": -122.513,
+      "continuous": false
+    },
+    "marine": [
+      -122.56,
+      37.83
+    ],
+    "bearing": 265,
+    "access": "Beach parking",
+    "source": "https://www.nps.gov/goga/planyourvisit/rodeo-beach-and-lagoon.htm",
+    "notes": "Beach parking, restrooms and a broad view of the surf make this an easy place for a first look. Shared with surfers and other visitors. Fishing is prohibited in Rodeo Lagoon and Rodeo Lake; this pin is for the ocean beach. Check backcast room, shore break, footing and bait activity. Tide reference is Ocean Beach across the Golden Gate; the dashed curve is estimated between its NOAA high/low predictions.",
+    "region": "MARIN",
+    "currentStation": null,
+    "sourceLabel": "NPS beach guide",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "black-sands",
+    "name": "Black Sands Beach",
+    "lon": -122.505,
+    "lat": 37.82,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414290",
+      "name": "SAN FRANCISCO (Golden Gate)",
+      "lat": 37.80630555555555,
+      "lon": -122.4658888888889,
+      "continuous": true
+    },
+    "marine": [
+      -122.52,
+      37.81
+    ],
+    "bearing": 190,
+    "access": "Steep trail · 0.3 mi each way",
+    "source": "https://www.nps.gov/places/black-sands-beach.htm",
+    "notes": "A short but steep approach: about 0.3 miles and 300 feet down, with an uphill return. High tides cover much of the narrow beach. Inspect the usable shoreline, backcast room and return route before setting up. Tide reference is the Golden Gate station, not a measurement on this beach. Casting guidance assumes a south-facing position; adjust to the stretch you fish.",
+    "region": "MARIN",
+    "currentStation": null,
+    "sourceLabel": "NPS beach guide",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "kirby",
+    "name": "Kirby Cove",
+    "lon": -122.489,
+    "lat": 37.827,
+    "exposure": "Golden Gate beach",
+    "tideStation": {
+      "id": "9414290",
+      "name": "SAN FRANCISCO (Golden Gate)",
+      "lat": 37.80630555555555,
+      "lon": -122.4658888888889,
+      "continuous": true
+    },
+    "marine": [
+      -122.5,
+      37.82
+    ],
+    "bearing": 175,
+    "access": "Walk-in beach · 1 mi each way",
+    "source": "https://www.nps.gov/goga/planyourvisit/kirby.htm",
+    "notes": "A beach at the Golden Gate reached by a steep, mile-long walk down from the Battery Spencer area, with an uphill return. The public can walk in without a campsite reservation. Carry water; there is no potable water at the cove. Inspect the water, footing and casting space on arrival. Tide reference is the Golden Gate station. The marine forecast is offshore context, not a prediction of waves breaking on this beach.",
+    "region": "MARIN",
+    "currentStation": null,
+    "sourceLabel": "NPS beach guide",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "baker",
+    "name": "Baker Beach",
+    "region": "SAN FRANCISCO",
+    "lon": -122.484,
+    "lat": 37.793,
+    "exposure": "Ocean-facing beach",
+    "tideStation": {
+      "id": "9414290",
+      "name": "SAN FRANCISCO (Golden Gate)",
+      "lat": 37.80630555555555,
+      "lon": -122.4658888888889,
+      "continuous": true
+    },
+    "currentStation": {
+      "id": "PCT0256",
+      "name": "Baker Beach (South Bay), 0.3 nmi. NW of",
+      "lat": 37.79783,
+      "lon": -122.4885,
+      "bin": 1,
+      "depth": 31
+    },
+    "marine": [
+      -122.51,
+      37.79
+    ],
+    "bearing": 285,
+    "notes": "NPS lists fishing along the beach and rocky shoreline. Stay on the beach for this shore-fishing plan; the surf and rocks need a separate on-site assessment.",
+    "source": "https://www.nps.gov/prsf/planyourvisit/baker-beach.htm",
+    "sourceLabel": "NPS beach guide",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "crissy",
+    "name": "Crissy Field",
+    "region": "SAN FRANCISCO",
+    "lon": -122.456,
+    "lat": 37.806,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414290",
+      "name": "SAN FRANCISCO (Golden Gate)",
+      "lat": 37.80630555555555,
+      "lon": -122.4658888888889,
+      "continuous": true
+    },
+    "currentStation": {
+      "id": "PCT0286",
+      "name": "Fort Point, 0.5 nmi. east of",
+      "lat": 37.81167,
+      "lon": -122.46633,
+      "bin": 1,
+      "depth": 55
+    },
+    "marine": null,
+    "bearing": 15,
+    "notes": "Use the public beach and leave space behind you for walkers. The former Coast Guard pier, breakwater, and seawall are closed to fishing. Respect the signed marsh boundaries.",
+    "source": "https://www.nps.gov/goga/learn/management/superintendents-compendium.htm",
+    "sourceLabel": "NPS access restrictions",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "ocean",
+    "name": "Ocean Beach",
+    "region": "SAN FRANCISCO",
+    "lon": -122.511,
+    "lat": 37.755,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414275",
+      "name": "Ocean Beach, outer coast",
+      "lat": 37.775,
+      "lon": -122.513,
+      "continuous": false
+    },
+    "currentStation": {
+      "id": "PCT0206",
+      "name": "South Channel",
+      "lat": 37.75,
+      "lon": -122.53333,
+      "bin": 1,
+      "depth": null
+    },
+    "marine": [
+      -122.55,
+      37.75
+    ],
+    "bearing": 275,
+    "notes": "NPS identifies Ocean Beach as a fishing location. This is an exposed surf beach; a light-wind forecast does not resolve rip currents or shore break. Check current beach alerts before leaving.",
+    "source": "https://www.nps.gov/goga/planyourvisit/oceanbeach.htm",
+    "sourceLabel": "NPS beach guide",
+    "access": "Exposed beach",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "pacifica",
+    "name": "Pacifica / Linda Mar",
+    "region": "SOUTH COAST",
+    "lon": -122.504,
+    "lat": 37.599,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414131",
+      "name": "Pillar Point Harbor, Half Moon Bay",
+      "lat": 37.5025,
+      "lon": -122.4821666666667,
+      "continuous": true
+    },
+    "currentStation": null,
+    "marine": [
+      -122.54,
+      37.6
+    ],
+    "bearing": 270,
+    "notes": "Pacifica State Beach lists fishing and provides beach access off Highway 1. The beach is shared with surfers and other visitors; choose space for a safe backcast.",
+    "source": "https://www.parks.ca.gov/?page_id=524",
+    "sourceLabel": "California State Parks",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "hmb",
+    "name": "Half Moon Bay",
+    "region": "SOUTH COAST",
+    "lon": -122.448,
+    "lat": 37.469,
+    "exposure": "Open coast",
+    "tideStation": {
+      "id": "9414131",
+      "name": "Pillar Point Harbor, Half Moon Bay",
+      "lat": 37.5025,
+      "lon": -122.4821666666667,
+      "continuous": true
+    },
+    "currentStation": null,
+    "marine": [
+      -122.49,
+      37.47
+    ],
+    "bearing": 265,
+    "notes": "Francis Beach, at 95 Kelly Avenue, has a paved ramp to the sand. State Parks lists shore fishing along Half Moon Bay State Beach. Tide reference is inside Pillar Point Harbor, not a beach measurement.",
+    "source": "https://www.parks.ca.gov/?page_id=531",
+    "sourceLabel": "California State Parks",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "richmond",
+    "name": "Miller/Knox",
+    "region": "EAST BAY",
+    "lon": -122.386,
+    "lat": 37.916,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414863",
+      "name": "Chevron Oil Company Pier, Richmond",
+      "lat": 37.92829895019531,
+      "lon": -122.4000015258789,
+      "continuous": true
+    },
+    "currentStation": {
+      "id": "PCT0656",
+      "name": "Point Richmond, 0.5 mile west of",
+      "lat": 37.905,
+      "lon": -122.4,
+      "bin": 1,
+      "depth": 6
+    },
+    "marine": null,
+    "bearing": 255,
+    "notes": "The park has shoreline access, Keller Beach, and fishing at Ferry Point. A shore fly-casting position still needs an on-site check; keep clear of swimming areas and do not assume the pier offers backcast space.",
+    "source": "https://www.ebparks.org/parks/miller-knox",
+    "sourceLabel": "East Bay Regional Parks",
+    "access": "Scout first",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "berkeley",
+    "name": "Berkeley shoreline",
+    "region": "EAST BAY",
+    "lon": -122.317,
+    "lat": 37.862,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414816",
+      "name": "Berkeley",
+      "lat": 37.8650016784668,
+      "lon": -122.30699920654297,
+      "continuous": true
+    },
+    "currentStation": {
+      "id": "PCT0596",
+      "name": "Fleming Point, 1.72 nmi. SW of",
+      "lat": 37.877,
+      "lon": -122.35883,
+      "bin": 1,
+      "depth": 3
+    },
+    "marine": null,
+    "bearing": 270,
+    "notes": "McLaughlin Eastshore provides access from Gilman Street and University Avenue. This is an exploration area, not a verified fly-fishing entry point. Check posted restrictions and ground conditions before choosing a position.",
+    "source": "https://www.ebparks.org/parks/mclaughlin-eastshore",
+    "sourceLabel": "East Bay Regional Parks",
+    "access": "Scout first",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "alameda",
+    "name": "Crown Beach",
+    "region": "EAST BAY",
+    "lon": -122.277,
+    "lat": 37.759,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414750",
+      "name": "Alameda",
+      "lat": 37.77195277777778,
+      "lon": -122.3002611111111,
+      "continuous": true
+    },
+    "currentStation": {
+      "id": "PCT0436",
+      "name": "Alameda Radar Tower, 0.9 nmi. SSW of",
+      "lat": 37.7455,
+      "lon": -122.283,
+      "bin": 1,
+      "depth": 4
+    },
+    "marine": null,
+    "bearing": 220,
+    "notes": "East Bay Regional Parks explicitly allows shore fishing at Crown Beach. Public beach access is near Eighth Street and Otis Drive. Share the beach with swimmers and boardsports users; check the park water-quality link.",
+    "source": "https://www.ebparks.org/parks/crown-beach",
+    "sourceLabel": "East Bay Regional Parks",
+    "access": "Beach access",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "candlestick",
+    "name": "Candlestick Point",
+    "region": "WEST BAY",
+    "lon": -122.376,
+    "lat": 37.708,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414358",
+      "name": "Hunters Point",
+      "lat": 37.73,
+      "lon": -122.357,
+      "continuous": true
+    },
+    "currentStation": null,
+    "marine": null,
+    "bearing": 90,
+    "notes": "State Parks documents shoreline fishing and pocket beaches at Candlestick Point. This pin marks the general point, not a verified wet-wading entry. Scout casting room and footing, and check posted access hours. Wind guidance assumes an east-facing position; adjust for the stretch you fish. Tide predictions use Hunters Point; no local current reference is assigned.",
+    "source": "https://www.parks.ca.gov/?page_id=519",
+    "sourceLabel": "California State Parks",
+    "access": "Shoreline access · scout casting position",
+    "reviewed": "2026-09-21"
+  },
+  {
+    "id": "coyote",
+    "name": "Coyote Point",
+    "region": "WEST BAY",
+    "lon": -122.323,
+    "lat": 37.591,
+    "exposure": "Bay shoreline",
+    "tideStation": {
+      "id": "9414449",
+      "name": "Coyote Point Marina",
+      "lat": 37.5917,
+      "lon": -122.313,
+      "continuous": false
+    },
+    "currentStation": null,
+    "marine": null,
+    "bearing": 0,
+    "notes": "Added from your fly-shop lead: an angler reported fishing here this morning. San Mateo County lists fishing at the park. This pin marks the north-shore promenade area, not the angler’s exact position or a verified wet-wading entry. Share access with swimmers and boardsports users; scout backcast space and check park hours. Wind guidance assumes a north-facing position. NOAA provides local high/low tide events; the app estimates the curve between them. No local current reference is assigned.",
+    "source": "https://www.smcgov.org/parks/coyote-point-recreation-area",
+    "sourceLabel": "San Mateo County Parks",
+    "access": "Shoreline access · fly-shop lead",
+    "reviewed": "2026-09-21"
+  }
+];
