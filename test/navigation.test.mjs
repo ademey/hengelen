@@ -2,9 +2,12 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 const app=readFileSync(new URL('../dist/app.js',import.meta.url),'utf8');
 function setup(){
  const nodes=new Map(),events={};const $=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,classList:{toggle(){}},append(child){this.child=child},focus(){},dispatchEvent(){}});return nodes.get(id)};
- const context=vm.createContext({$,currentPage:'atlas',atlasCamera:null,selected:'crissy',focusedSource:null,zoom:1.7,panX:42,panY:-18,spots:[{id:'crissy',name:'Crissy'},{id:'kirby',name:'Kirby'}],location:{hash:''},document:{body:{dataset:{}},title:''},window:{scrollTo(){},addEventListener(name,fn){events[name]=fn}},render(){},renderJournal(){},loadDetails(){},project:()=>[300,250],getSpot:()=>({lon:0,lat:0,name:'Selected shoreline'}),history:{pushState(_a,_b,hash){context.location.hash=hash}}});
- vm.runInContext(app.slice(app.indexOf('function navigate('),app.indexOf('\nfunction renderJournal(')),context);return {context,$,events};
+ const context=vm.createContext({$,currentPage:'atlas',atlasCamera:null,selected:'crissy',focusedSource:null,zoom:1.7,panX:42,panY:-18,spots:[{id:'crissy',name:'Crissy'},{id:'kirby',name:'Kirby'}],renders:0,loaded:[],location:{hash:''},document:{body:{dataset:{}},title:''},window:{scrollTo(){},addEventListener(name,fn){events[name]=fn}},render(){context.renders++},renderJournal(){},loadDetails(id){context.loaded.push(id)},project:()=>[300,250],getSpot:()=>({lon:0,lat:0,name:'Selected shoreline'}),history:{pushState(_a,_b,hash){context.location.hash=hash}}});
+ const selectStart=app.indexOf('function selectSpot(');vm.runInContext(app.slice(selectStart,app.indexOf("$('#hour')",selectStart)),context);vm.runInContext(app.slice(app.indexOf('function navigate('),app.indexOf('\nfunction renderJournal(')),context);return {context,$,events};
 }
+test('atlas marker preview changes selection without changing the camera or route',()=>{
+ const {context:c}=setup();vm.runInContext("previewSpot('kirby')",c);assert.equal(c.selected,'kirby');assert.equal(c.location.hash,'');assert.equal(c.zoom,1.7);assert.equal(c.panX,42);assert.equal(c.panY,-18);assert.equal(c.renders,1);assert.deepEqual([...c.loaded],['kirby']);
+});
 test('spot navigation opens details and returning restores the atlas camera',()=>{
  const {context:c,$}=setup();vm.runInContext("navigate('spot/kirby')",c);assert.equal(c.currentPage,'location');assert.equal(c.selected,'kirby');assert.equal($('#atlas-view').hidden,true);assert.equal($('#location-view').hidden,false);assert.equal($('#detail-map-slot').child,$('#map-panel'));
  vm.runInContext("navigate('atlas')",c);assert.equal(c.zoom,1.7);assert.equal(c.panX,42);assert.equal(c.panY,-18);assert.equal($('#atlas-map-slot').child,$('#map-panel'));
