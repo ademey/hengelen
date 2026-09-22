@@ -1,6 +1,6 @@
 # Hengelen project workflow
 
-This is a local-only web app. Preserve the khaki/black atlas design and the user's personal data in `data/`.
+This app currently runs locally. The user now intends to make it publishable; track that transition in GitHub issue #6. Do not expose local personal data or deploy services without a concrete deployment request. Preserve the khaki/black atlas design and the user's personal data in `data/`.
 
 ## Task tracking
 
