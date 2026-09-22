@@ -22,6 +22,12 @@ test('suggestions do not overlap and ocean swell gaps remain explicit',()=>{
  for(let i=0;i<windows.length;i++)for(let j=i+1;j<windows.length;j++)assert.ok(windows[i].end<=windows[j].start||windows[i].start>=windows[j].end);
  const coast=fishingWindows({...input,spot:{exposure:'Open coast',bearing:0}});assert.ok(coast.every(w=>w.missing.includes('Fresh offshore swell unavailable')));
 });
+test('session ranking does not assume casting handedness or shore orientation',()=>{
+ const north=fishingWindows({...input,spot:{...input.spot,bearing:0}});
+ const south=fishingWindows({...input,spot:{...input.spot,bearing:180}});
+ assert.deepEqual(north,south);
+ assert.ok(north.every(w=>![...w.reasons,...w.cautions,...w.missing].some(line=>/casting-arm|wind from your left|headwind|following wind/i.test(line))));
+});
 test('tide and wind share time coordinates and events-only tide without events stays unavailable',()=>{
  const html=conditionsTimeline({hours:weather.hours,tides:detail.tides.value,selected:3600,limit:10,width:800,sun:weather.days});
  assert.match(html,/TIDE · FT/);assert.match(html,/WIND · KN/);assert.match(html,/CURRENT EVENTS/);assert.ok(!html.includes('NaN'));
