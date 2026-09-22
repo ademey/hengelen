@@ -37,3 +37,9 @@ The central timeline aligns tide height (feet MLLW), wind/gusts (knots), and dis
 Sessions are two complete daylight hours within the wind/gust preferences. Explicit starting heuristics favor proximity to sunrise/sunset, changing tide height in either direction, smaller offshore swell, and casting direction. Current events are explanatory context, not a proxy for current speed at the shore. Missing/stale references make a session provisional; fresh weather is required. Suggestions are ranked within the selected day and do not overlap. These preferences are not calibrated catch predictions or safety ratings.
 
 “Compare spots at this time” loads detailed references with three concurrent requests and compares the same two-hour interval. New journal entries include a clearly labeled forecast snapshot and prompts for actual observations. Existing entries are preserved. Journal observations do not automatically change the ranking yet.
+
+### Navigation and task tracking
+
+The home page is an atlas overview. Selecting a map marker or sidebar location opens a dedicated page (`#spot/<id>`) with a mini-map, conditions timeline, session suggestions, and shore notes. The location selector and browser back button support navigation; returning to the atlas restores its map position.
+
+Track work in [GitHub Issues](https://github.com/ademey/hengelen/issues). Link substantive changes to an issue, record validation, and close completed tasks when delivered. See `AGENTS.md` for the project workflow.
