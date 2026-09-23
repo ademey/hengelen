@@ -43,3 +43,5 @@ Sessions are two complete daylight hours within the wind/gust preferences. Expli
 The home page is an atlas overview. Selecting a map marker or sidebar location opens a dedicated page (`#spot/<id>`) with a mini-map, conditions timeline, session suggestions, and shore notes. The location selector and browser back button support navigation; returning to the atlas restores its map position.
 
 Track work in [GitHub Issues](https://github.com/ademey/hengelen/issues). Link substantive changes to an issue, record validation, and close completed tasks when delivered. See `AGENTS.md` for the project workflow.
+
+The proposed public architecture, privacy boundary, provider review, and staged rollout are documented in [docs/public-hosting.md](docs/public-hosting.md). It is a plan only; no public infrastructure has been provisioned.
