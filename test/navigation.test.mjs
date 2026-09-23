@@ -12,8 +12,9 @@ test('spot navigation opens details and returning restores the atlas camera',()=
  const {context:c,$}=setup();vm.runInContext("navigate('spot/kirby')",c);assert.equal(c.currentPage,'location');assert.equal(c.selected,'kirby');assert.equal($('#atlas-view').hidden,true);assert.equal($('#location-view').hidden,false);assert.equal($('#detail-map-slot').child,$('#map-panel'));
  vm.runInContext("navigate('atlas')",c);assert.equal(c.zoom,1.7);assert.equal(c.panX,42);assert.equal(c.panY,-18);assert.equal($('#atlas-map-slot').child,$('#map-panel'));
 });
-test('journal, direct links, and hash navigation show the right page',()=>{
+test('journal, settings, direct links, and hash navigation show the right page',()=>{
  const {context:c,$,events}=setup();vm.runInContext("navigate('journal')",c);assert.equal($('#journal-view').hidden,false);assert.equal($('#location-view').hidden,true);
+ vm.runInContext("navigate('settings')",c);assert.equal(c.currentPage,'settings');assert.equal($('#settings-view').hidden,false);assert.equal($('#journal-view').hidden,true);
  c.location.hash='#spot/crissy';events.hashchange();assert.equal(c.currentPage,'location');assert.equal($('#journal-view').hidden,true);
  c.location.hash='#atlas';events.hashchange();assert.equal(c.currentPage,'atlas');
 });
