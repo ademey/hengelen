@@ -36,7 +36,7 @@ The central timeline aligns tide height (feet MLLW), wind/gusts (knots), and dis
 
 Sessions are two complete daylight hours within the wind/gust preferences. Explicit starting heuristics favor proximity to sunrise/sunset, changing tide height in either direction, smaller offshore swell, and casting direction. Current events are explanatory context, not a proxy for current speed at the shore. Missing/stale references make a session provisional; fresh weather is required. Suggestions are ranked within the selected day and do not overlap. These preferences are not calibrated catch predictions or safety ratings.
 
-“Compare spots at this time” loads detailed references with three concurrent requests and compares the same two-hour interval. New journal entries include an explicit session date and time, a clearly labeled matching forecast snapshot, and prompts for actual observations. Dates outside forecast coverage are recorded as unavailable instead of borrowing unrelated conditions. Existing entries are preserved. Journal observations do not automatically change the ranking yet.
+“Compare spots at this time” loads detailed references with three concurrent requests and compares the same two-hour interval. New journal entries include an explicit session date and time, a clearly labeled matching forecast snapshot, free-text notes, and optional structured observations for casting comfort, actual wind, water clarity, bait activity, and fish encounters. Dates outside forecast coverage are recorded as unavailable instead of borrowing unrelated conditions. Location pages show recent comparable trips and sample counts. Existing entries are preserved, and journal observations do not change the ranking.
 
 ### Navigation and task tracking
 
