@@ -42,6 +42,7 @@
 .conditions-chart-svg text{font:10px Plex,monospace;fill:var(--muted)}
 .conditions-chart-svg .track-title{font-size:10px;letter-spacing:.6px;fill:var(--ink)}
 .timeline-grid{fill:none;stroke:var(--soft);stroke-width:.6}
+.current-overlay-caption{font-size:10px;color:var(--muted);margin:8px 0}.current-event-symbol{fill:var(--face);stroke:var(--ink);stroke-width:1.4}.current-event-symbol.slack{fill:var(--ink)}.current-event-leader{stroke:var(--muted);stroke-width:.7;stroke-dasharray:2 2}.current-event-label{font-size:9px;font-weight:600;paint-order:stroke;stroke:var(--face);stroke-width:3px;stroke-linejoin:round}
 .tide-line,.wind-line,.gust-line{fill:none;stroke:#363b28;stroke-width:2;vector-effect:non-scaling-stroke}
 .tide-line{stroke:#536b60;stroke-width:2.5}.gust-line{stroke:#868269;stroke-dasharray:3 3;stroke-width:1.3}
 .comfort-line{stroke:#9b7849;stroke-dasharray:4 4}.selected-time{stroke:var(--ink);stroke-dasharray:2 3;pointer-events:none}
