@@ -34,6 +34,7 @@
 
 /* Unlabeled reference symbols keep the map quiet; details live below it. */
 .source-marker:hover .source-symbol,.source-marker.focused .source-symbol{stroke:#25271b;stroke-width:2.5}
+.marker.muted-marker{opacity:.42}.marker.muted-marker:hover,.marker.muted-marker:focus{opacity:1}.map-preview{position:absolute;z-index:2;top:60px;right:18px;width:min(285px,calc(100% - 36px));padding:15px;background:var(--face);border:1px solid var(--ink);box-shadow:4px 4px 0 #77795e33}.map-preview h3{font-size:18px;font-weight:400;margin:6px 0 2px}.map-preview>p{font-size:10px;color:var(--muted);margin:0 0 12px}.map-preview dl{margin:0}.map-preview dl div{border-top:1px solid var(--soft);padding:8px 0}.map-preview dt{font-size:9px;letter-spacing:1px}.map-preview dd{font-size:11px;margin:3px 0 0}.map-preview button{width:100%;margin-top:5px;font-size:11px}
 
 /* One time axis, with tide given the most room. */
 #conditions-chart{width:100%;margin-top:10px;min-height:280px;cursor:crosshair}
@@ -77,3 +78,15 @@ body:not([data-page="location"]) #source-toggle{display:none}
 body[data-page="atlas"] .map-key span:not(:first-child){display:none}
 
 #settings-view{min-height:calc(100vh - 139px);padding:40px 7%}.settings-head{border-bottom:1px solid var(--ink);padding-bottom:25px}.settings-head h1{font-size:32px;font-weight:400;margin-bottom:8px}.settings-head p{color:var(--muted)}.settings-panel{max-width:620px;padding:32px 0;border-bottom:1px solid var(--rule)}.settings-panel label{display:flex;justify-content:space-between;font-size:14px}.settings-panel input{display:block;width:100%;margin:22px 0 16px}.settings-panel p{line-height:1.8}.settings-panel small{display:block;margin-top:18px}
+
+/* The desktop atlas is a single working surface; only its location list scrolls. */
+@media(min-width:751px){
+ body[data-page="atlas"]{height:100dvh;min-height:0;overflow:hidden;display:grid;grid-template-rows:76px auto minmax(0,1fr) auto}
+ body[data-page="atlas"] #atlas-view{height:100%;min-height:0;overflow:hidden}
+ body[data-page="atlas"] #atlas-map-slot{position:static;height:100%;min-height:0}
+ body[data-page="atlas"] #atlas-map-slot .map-wrap{height:auto;min-height:0;flex:1}
+ body[data-page="atlas"] .index{height:100%;min-height:0;overflow:hidden}
+ body[data-page="atlas"] #spot-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+ body[data-page="atlas"] .index-bottom{margin-top:16px;padding-top:16px}
+ body[data-page="atlas"] footer{min-height:0}
+}
