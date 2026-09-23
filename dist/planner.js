@@ -1,4 +1,4 @@
-import {atTime,tideAt,directionName} from './domain.js';
+import {atTime,tideAt} from './domain.js';
 const valid=Number.isFinite;
 // Transparent planning preferences, not a trained catch-probability model.
 export function fishingWindows({weather,detail,spot,limit=10,now=Date.now()/1000,weatherStatus='ok'}){
@@ -15,11 +15,6 @@ export function fishingWindows({weather,detail,spot,limit=10,now=Date.now()/1000
   const wind=Math.max(...pair.map(r=>r.wind)),gust=Math.max(...pair.map(r=>r.gust));
   reasons.push(`Wind ${wind.toFixed(0)} kn · gusts ${gust.toFixed(0)} kn`);
   score+=(limit-wind)/limit;
-  const angle=valid(spot.bearing)&&valid(pair[0].direction)?(pair[0].direction-spot.bearing+360)%360:null;
-  if(angle===null)missing.push('Casting direction not assessed');
-  else if(angle>30&&angle<150){score-=.5;cautions.push('Wind from your casting-arm side; check your stance')}
-  else if(angle>210&&angle<330)reasons.push('Wind from your left for the listed shore orientation');
-  else cautions.push(`${angle<=30||angle>=330?'Headwind':'Following wind'} for the listed shore orientation`);
   const a=detail?.tides?.status==='ok'?tideAt(detail.tides.value,start):null,b=detail?.tides?.status==='ok'?tideAt(detail.tides.value,end):null;
   if(a&&b){
    const change=b.value-a.value;
