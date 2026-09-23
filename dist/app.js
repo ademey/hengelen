@@ -242,7 +242,7 @@ function renderConditionsChart(){
  const host=$('#conditions-chart'),width=Math.max(1,host.clientWidth);
  if(width<2)return;
  const detail=detailsById[selected],weather=weatherById[selected];
- host.innerHTML=conditionsTimeline({hours:dayRows(weather?.hours),tides:detail?.tides.value??[],highLow:detail?.highLow.value??[],currents:detail?.currents.value??[],sun:weather?.days??[],windows:planningWindows(),selected:timestamp(),limit,width,tideStatus:detail?.tides.status,highLowStatus:detail?.highLow.status,currentStatus:detail?.currents.status,weatherStatus:weatherMeta[selected]?.status});
+ host.innerHTML=conditionsTimeline({hours:dayRows(weather?.hours),tides:detail?.tides.value??[],highLow:detail?.highLow.value??[],currents:detail?.currents.value??[],sun:weather?.days??[],windows:planningWindows(),selected:timestamp(),limit,width,tideStatus:detail?.tides.status,highLowStatus:detail?.highLow.status,currentStatus:detail?.currents.status,currentStation:detail?.spot.currentStation?.name,weatherStatus:weatherMeta[selected]?.status});
  host.onclick=e=>{const svg=host.querySelector('svg');if(!svg)return;const point=new DOMPoint(e.clientX,e.clientY).matrixTransform(svg.getScreenCTM().inverse()),rows=dayRows(weather?.hours);if(point.x<44||point.x>width-12||!rows.length)return;jumpTo(rows[0].time+(point.x-44)/(width-56)*rows.length*3600)};
  $('#timeline-source').textContent=`Tides: ${detail?.spot.tideStation?.name??'loading reference'} · Currents: ${detail?.spot.currentStation?.name??'no assigned reference'}. Tide height does not indicate current speed.`;
  renderComparison();

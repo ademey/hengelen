@@ -23,7 +23,11 @@ test('suggestions do not overlap and ocean swell gaps remain explicit',()=>{
  const coast=fishingWindows({...input,spot:{exposure:'Open coast',bearing:0}});assert.ok(coast.every(w=>w.missing.includes('Fresh offshore swell unavailable')));
 });
 test('tide and wind share time coordinates and events-only tide without events stays unavailable',()=>{
- const html=conditionsTimeline({hours:weather.hours,tides:detail.tides.value,selected:3600,limit:10,width:800,sun:weather.days});
- assert.match(html,/TIDE · FT/);assert.match(html,/WIND · KN/);assert.match(html,/CURRENT EVENTS/);assert.ok(!html.includes('NaN'));
+ const html=conditionsTimeline({hours:weather.hours,tides:detail.tides.value,currents:[{time:3600,type:'flood',speed:1.2},{time:7200,type:'slack',speed:0}],currentStation:'Golden Gate Bridge',selected:3600,limit:10,width:800,sun:weather.days});
+ assert.match(html,/TIDE · FT/);assert.match(html,/WIND · KN/);assert.match(html,/Current markers: Golden Gate Bridge/);assert.match(html,/data-current-event="MAX FLOOD" data-tide-height="0.50"/);assert.match(html,/data-current-event="SLACK" data-tide-height="1.00"/);assert.doesNotMatch(html,/CURRENT EVENTS · REFERENCE STATION/);assert.ok(!html.includes('NaN'));
  const noCurve=conditionsTimeline({hours:weather.hours,tideStatus:'events-only',selected:0,limit:10,width:400,sun:weather.days});assert.ok(!noCurve.includes('class="tide-line"'));assert.match(noCurve,/Not enough high\/low data/);
+});
+test('current events without supported tide data do not receive invented vertical positions',()=>{
+ const html=conditionsTimeline({hours:weather.hours,currents:[{time:3600,type:'ebb',speed:-1.4}],currentStation:'Reference',selected:0,limit:10,width:500,sun:weather.days});
+ assert.doesNotMatch(html,/data-current-event=/);assert.match(html,/tide height unavailable for overlay/);
 });
