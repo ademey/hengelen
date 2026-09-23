@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {number,epoch,normalizeWeather,normalizeMarine,atTime,tideAt,windWindows,validateState,distanceMiles} from '../dist/domain.js';
+import {number,epoch,normalizeWeather,normalizeMarine,atTime,tideAt,windWindows,validateState,distanceMiles,forecastTimeFor} from '../dist/domain.js';
 test('missing readings remain unavailable, never zero',()=>{for(const v of [null,undefined,'','bad'])assert.equal(number(v),null);assert.equal(number('0'),0);const w=normalizeWeather({hourly:{time:[100],wind_speed_10m:[null],wind_gusts_10m:[null]}});assert.equal(w.hours[0].wind,null);assert.equal(w.hours[0].gust,null)});
 test('marine meters convert to feet while gaps remain gaps',()=>{const m=normalizeMarine({hourly:{time:[0,3600],wave_height:[1,null],swell_wave_height:[2,null],swell_wave_period:[12,null]}});assert.equal(m.hours[0].wave,3.28084);assert.equal(m.hours[0].swell,6.56168);assert.equal(m.hours[1].swell,null)});
 test('NOAA GMT times use explicit UTC, including around DST changes',()=>{assert.equal(epoch('2026-11-01 09:00'),Date.parse('2026-11-01T09:00:00Z')/1000)});
@@ -11,3 +11,5 @@ test('valid records keep only expected fields; invalid locations and duplicates 
 test('distance is zero for identical coordinates',()=>{assert.equal(distanceMiles({lat:37.8,lon:-122.4},{lat:37.8,lon:-122.4}),0)});
 
 test('calendar-invalid trip dates reject without normalizing into another day',()=>{assert.throws(()=>validateState({spots:[],entries:[{id:'bad-date',spot:'Crissy',date:'2026-02-30',catch:'',notes:''}],prefs:{windLimit:10}}))});
+test('journal session time validation preserves old entries and rejects malformed times',()=>{const old=validateState({spots:[],entries:[{id:'old',spot:'Crissy',date:'2026-09-22',catch:'',notes:'saved'}],prefs:{windLimit:10}});assert.equal(old.entries[0].time,'');assert.throws(()=>validateState({spots:[],entries:[{id:'bad-time',spot:'Crissy',date:'2026-09-22',time:'25:00',catch:'',notes:''}],prefs:{windLimit:10}}))});
+test('forecast session matching stays on the requested Pacific date and coverage',()=>{const rows=[Date.parse('2026-09-22T14:00:00Z'),Date.parse('2026-09-22T15:00:00Z')].map(time=>({time:time/1000}));assert.equal(forecastTimeFor(rows,'2026-09-22','07:20'),rows[0].time);assert.equal(forecastTimeFor(rows,'2026-09-22','09:00'),null);assert.equal(forecastTimeFor(rows,'2026-09-21','07:00'),null)});

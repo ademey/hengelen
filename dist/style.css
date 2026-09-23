@@ -35,6 +35,7 @@
 /* Unlabeled reference symbols keep the map quiet; details live below it. */
 .source-marker:hover .source-symbol,.source-marker.focused .source-symbol{stroke:#25271b;stroke-width:2.5}
 .marker.muted-marker{opacity:.42}.marker.muted-marker:hover,.marker.muted-marker:focus{opacity:1}.map-preview{position:absolute;z-index:2;top:60px;right:18px;width:min(285px,calc(100% - 36px));padding:15px;background:var(--face);border:1px solid var(--ink);box-shadow:4px 4px 0 #77795e33}.map-preview h3{font-size:18px;font-weight:400;margin:6px 0 2px}.map-preview>p{font-size:10px;color:var(--muted);margin:0 0 12px}.map-preview dl{margin:0}.map-preview dl div{border-top:1px solid var(--soft);padding:8px 0}.map-preview dt{font-size:9px;letter-spacing:1px}.map-preview dd{font-size:11px;margin:3px 0 0}.map-preview button{width:100%;margin-top:5px;font-size:11px}
+.trip-when{display:grid;grid-template-columns:1fr 1fr;gap:12px}.trip-when label{margin-bottom:0}
 
 /* One time axis, with tide given the most room. */
 #conditions-chart{width:100%;margin-top:10px;min-height:280px;cursor:crosshair}

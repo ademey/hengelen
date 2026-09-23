@@ -1,7 +1,7 @@
 import {fishingWindows,distinctWindows} from './planner.js';
 import {conditionsTimeline} from './timeline.js';
 import {presets} from './spots.js';
-import {atTime,tideAt,displayTideAt,windWindows,directionName,distanceMiles} from './domain.js';
+import {atTime,tideAt,displayTideAt,windWindows,directionName,distanceMiles,forecastTimeFor} from './domain.js';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
@@ -15,6 +15,7 @@ let forecastTimes=[],weatherById={},weatherMeta={},detailsById={},detailLoading=
 const pacificDate=(t=Date.now()/1000)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t*1000));
 const shortDate=t=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric'}).format(new Date(t*1000));
 const clock=t=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit'}).format(new Date(t*1000));
+const inputClock=t=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Los_Angeles',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(t*1000));
 const weekday=t=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',weekday:'short'}).format(new Date(t*1000));
 const timestamp=()=>forecastTimes[hour]??Math.floor(Date.now()/3600000)*3600;
 const fmt=(n,d=1)=>Number.isFinite(n)?n.toFixed(d):'—';
@@ -188,12 +189,24 @@ $('#atlas-tab').onclick=()=>switchView(false);$('#journal-tab').onclick=()=>swit
 $('#back-atlas').onclick=()=>navigate('atlas');$('#detail-location').onchange=e=>selectSpot(e.target.value);
 window.addEventListener('hashchange',applyRoute);
 
-function renderJournal(){$('#journal-count').textContent=String(entries.length).padStart(2,'0');$('#entries').innerHTML=entries.length?entries.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<article class="entry"><div class="entry-actions"><button data-edit="${e.id}">Edit</button><button data-delete="${e.id}">Delete</button></div><small>${esc(e.date)} / ${esc(e.spot)}</small><h3>${esc(e.catch||'Time on the water')}</h3><p>${esc(e.notes||'No notes added.')}</p></article>`).join(''):'<p class="empty-journal">No trips yet. A blank page is a good place to start.<br>Log a session, even if all you caught was a little practice.</p>';$('#entries').querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this journal entry? A previous copy is kept in your local backup file.'))return;if(await persist({...local,entries:entries.filter(e=>e.id!==b.dataset.delete)}))renderJournal()});$('#entries').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openTrip(entries.find(e=>e.id===b.dataset.edit)))}
-function tripForecastNote(spot=getSpot()){
- const detail=detailsById[spot.id],c=conditions(spot),tide=displayTideAt(detail,timestamp());
- return `FORECAST SNAPSHOT — ${spot.name}
-${pacificDate(timestamp())} · ${clock(timestamp())} Pacific
-Wind ${fmt(c.wind,0)} kn, gusts ${fmt(c.gust,0)} kn, from ${directionName(c.direction)} (${weatherMeta[spot.id]?.status??'unavailable'}).
+function renderJournal(){$('#journal-count').textContent=String(entries.length).padStart(2,'0');$('#entries').innerHTML=entries.length?entries.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(e=>`<article class="entry"><div class="entry-actions"><button data-edit="${e.id}">Edit</button><button data-delete="${e.id}">Delete</button></div><small>${esc(e.date)}${e.time?' · '+esc(e.time):''} / ${esc(e.spot)}</small><h3>${esc(e.catch||'Time on the water')}</h3><p>${esc(e.notes||'No notes added.')}</p></article>`).join(''):'<p class="empty-journal">No trips yet. A blank page is a good place to start.<br>Log a session, even if all you caught was a little practice.</p>';$('#entries').querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this journal entry? A previous copy is kept in your local backup file.'))return;if(await persist({...local,entries:entries.filter(e=>e.id!==b.dataset.delete)}))renderJournal()});$('#entries').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openTrip(entries.find(e=>e.id===b.dataset.edit)))}
+function tripForecastNote(spot=getSpot(),date=$('#trip-date').value,time=$('#trip-time').value){
+ const requested=`${date} · ${time} Pacific`,forecastTime=forecastTimeFor(weatherById[spot.id]?.hours,date,time),detail=detailsById[spot.id];
+ if(forecastTime===null)return `FORECAST CONTEXT — ${spot.name}
+Session: ${requested}
+Forecast unavailable for this date and time. No unrelated conditions were attached.
+Saved forecast context, not an observation.
+
+ON THE WATER
+Actual wind / casting comfort:
+Water clarity:
+Bait seen / fish activity:
+Fly / retrieve / lessons: `;
+ const c=atTime(weatherById[spot.id]?.hours,forecastTime),tide=displayTideAt(detail,forecastTime);
+ return `FORECAST CONTEXT — ${spot.name}
+Session: ${requested}
+Forecast hour: ${pacificDate(forecastTime)} · ${clock(forecastTime)} Pacific
+Wind ${fmt(c?.wind,0)} kn, gusts ${fmt(c?.gust,0)} kn, from ${directionName(c?.direction)} (${weatherMeta[spot.id]?.status??'unavailable'}).
 Tide ${tide?.estimated?'approximately ':''}${fmt(tide?.value)} ft MLLW (${detail?.tides.status??'unavailable'}); reference: ${detail?.spot.tideStation?.name??'unavailable'}.
 Saved forecast context, not an observation.
 
@@ -203,25 +216,26 @@ Water clarity:
 Bait seen / fish activity:
 Fly / retrieve / lessons: `;
 }
-function openTrip(entry=null){if(!stateReady){notice('Local data is unavailable. Reload before saving a trip.');return}editingTrip=entry?.id??null;tripDraftVersion++;tripSnapshotPrefix=null;$('#trip-form').reset();const names=[...new Set([...spots.map(s=>s.name),...(entry?[entry.spot]:[])])];$('#trip-spot').innerHTML=names.map(name=>`<option ${name===(entry?.spot??getSpot().name)?'selected':''}>${esc(name)}</option>`).join('');$('#trip-date').value=entry?.date??pacificDate(timestamp());$('#trip-catch').value=entry?.catch??'';$('#trip-notes').value=entry?.notes??tripForecastNote();if(!entry)tripSnapshotPrefix=forecastPrefix($('#trip-notes').value);$('#trip-dialog').showModal()}
+function openTrip(entry=null){if(!stateReady){notice('Local data is unavailable. Reload before saving a trip.');return}editingTrip=entry?.id??null;tripDraftVersion++;tripSnapshotPrefix=null;$('#trip-form').reset();const names=[...new Set([...spots.map(s=>s.name),...(entry?[entry.spot]:[])])];$('#trip-spot').innerHTML=names.map(name=>`<option ${name===(entry?.spot??getSpot().name)?'selected':''}>${esc(name)}</option>`).join('');$('#trip-date').value=entry?.date??pacificDate(timestamp());$('#trip-time').value=entry?entry.time||'':inputClock(timestamp());$('#trip-catch').value=entry?.catch??'';$('#trip-notes').value=entry?.notes??tripForecastNote();if(!entry)tripSnapshotPrefix=forecastPrefix($('#trip-notes').value);$('#trip-dialog').showModal()}
 function forecastPrefix(note){const end=note.indexOf('\n\nON THE WATER');return end<0?'':note.slice(0,end+2)}
 function refreshTripSnapshot(spot){
  const notes=$('#trip-notes');
  if(tripSnapshotPrefix&&notes.value.startsWith(tripSnapshotPrefix)){
-  const next=forecastPrefix(tripForecastNote(spot));
+  const next=forecastPrefix(tripForecastNote(spot,$('#trip-date').value,$('#trip-time').value));
   notes.value=next+notes.value.slice(tripSnapshotPrefix.length);
   tripSnapshotPrefix=next;
  }
 }
-$('#trip-spot').onchange=async()=>{
+async function refreshTripContext(){
  if(editingTrip)return; // Existing journal entries retain their recorded observations.
  const version=++tripDraftVersion,spot=spots.find(s=>s.name===$('#trip-spot').value);
  if(!spot)return;
  refreshTripSnapshot(spot);
  await loadDetails(spot.id);
  if(version===tripDraftVersion&&$('#trip-dialog').open&&$('#trip-spot').value===spot.name)refreshTripSnapshot(spot);
-};
-$('#new-entry').onclick=()=>openTrip();$('#trip-form').onsubmit=async e=>{e.preventDefault();const entry={id:editingTrip??crypto.randomUUID(),spot:$('#trip-spot').value,date:$('#trip-date').value,catch:$('#trip-catch').value.trim(),notes:$('#trip-notes').value.trim()};const next=editingTrip?entries.map(e=>e.id===editingTrip?entry:e):[...entries,entry];if(!await persist({...local,entries:next}))return;$('#trip-dialog').close();renderJournal();switchView(true)};
+}
+$('#trip-spot').onchange=refreshTripContext;$('#trip-date').onchange=refreshTripContext;$('#trip-time').onchange=refreshTripContext;
+$('#new-entry').onclick=()=>openTrip();$('#trip-form').onsubmit=async e=>{e.preventDefault();const entry={id:editingTrip??crypto.randomUUID(),spot:$('#trip-spot').value,date:$('#trip-date').value,time:$('#trip-time').value,catch:$('#trip-catch').value.trim(),notes:$('#trip-notes').value.trim()};const next=editingTrip?entries.map(e=>e.id===editingTrip?entry:e):[...entries,entry];if(!await persist({...local,entries:next}))return;$('#trip-dialog').close();renderJournal();switchView(true)};
 async function boot(){try{applyLocal(await api('/api/state'));stateReady=true;if(local.revision===0){const oldSpots=read('hengelen-spots',[]),oldEntries=read('hengelen-journal',[]),oldLimit=read('hengelen-limit',10);if(oldSpots.length||oldEntries.length||oldLimit!==10){const imported=oldSpots.map(s=>({...s,referenceId:presets.reduce((a,b)=>distanceMiles(s,a)<distanceMiles(s,b)?a:b).id,exposure:s.exposure==='Open coast'?'Open coast':'Bay shoreline'}));await persist({...local,spots:imported,entries:oldEntries,prefs:{windLimit:oldLimit}})}}}catch(e){notice(e.message)}renderJournal();applyRoute();await Promise.all([loadOverview(),loadDetails(selected)]);}
 render();boot();
 fetch('coast.json').then(r=>{if(!r.ok)throw Error();return r.json()}).then(d=>{coasts=d;renderMap()}).catch(()=>notice('Coastline unavailable. Refresh to try again.'));
