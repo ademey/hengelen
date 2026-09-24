@@ -1,33 +1,322 @@
-export const number = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
-export const epoch = value => Date.parse(value.replace(' ','T')+'Z')/1000;
-export function distanceMiles(a,b){const rad=x=>x*Math.PI/180,dlat=rad(b.lat-a.lat),dlon=rad(b.lon-a.lon);return 3958.8*2*Math.asin(Math.sqrt(Math.sin(dlat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dlon/2)**2))}
-export function normalizeWeather(data){if(!data?.hourly?.time?.length)throw Error('No hourly forecast returned');const h=data.hourly;return {grid:{lat:data.latitude,lon:data.longitude},hours:h.time.map((time,i)=>({time,wind:number(h.wind_speed_10m?.[i]),gust:number(h.wind_gusts_10m?.[i]),direction:number(h.wind_direction_10m?.[i]),rain:number(h.precipitation_probability?.[i]),day:h.is_day?.[i]===1,temp:number(h.temperature_2m?.[i])})),days:(data.daily?.time??[]).map((time,i)=>({time,sunrise:data.daily.sunrise[i],sunset:data.daily.sunset[i]}))}}
-export function normalizeMarine(data){if(!data?.hourly?.time?.length)throw Error('No marine forecast returned');const h=data.hourly;return {grid:{lat:data.latitude,lon:data.longitude},hours:h.time.map((time,i)=>({time,wave:number(h.wave_height?.[i])===null?null:number(h.wave_height[i])*3.28084,swell:number(h.swell_wave_height?.[i])===null?null:number(h.swell_wave_height[i])*3.28084,period:number(h.swell_wave_period?.[i]),direction:number(h.swell_wave_direction?.[i])}))}}
-export function atTime(rows,time,tolerance=1800){if(!rows?.length)return null;let best=null,delta=Infinity;for(const row of rows){let d=Math.abs(row.time-time);if(d<delta){best=row;delta=d}}return delta<=tolerance?best:null}
-export function tideAt(rows,time){if(!rows?.length)return null;const i=rows.findIndex(r=>r.time>=time);if(i<0)return null;const b=rows[i],a=rows[Math.max(0,i-1)];if(time<a.time||b.time-a.time>900)return null;if(a.value===null||b.value===null)return null;const value=b.time===a.time?b.value:a.value+(b.value-a.value)*(time-a.time)/(b.time-a.time);const neighbor=rows[Math.min(rows.length-1,i+1)];return {value,rising:neighbor.value>a.value}}
-export function windWindows(rows,limit,now=Date.now()/1000){const groups=[];let group=[];function finish(){if(group.length>=2)groups.push({start:group[0].time,end:group.at(-1).time+3600,wind:Math.max(...group.map(r=>r.wind)),gust:Math.max(...group.map(r=>r.gust)),rain:Math.max(...group.map(r=>r.rain??0))});group=[]}for(const r of rows??[]){const ok=r.time>=now-300&&r.day&&r.wind!==null&&r.gust!==null&&r.wind<=limit&&r.gust<=limit+3;if(!ok){finish();continue}if(group.length&&r.time-group.at(-1).time!==3600)finish();group.push(r)}finish();return groups}
-export function directionName(deg){if(deg===null||deg===undefined)return '—';return ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(deg/22.5)%16]}
-export function forecastTimeFor(rows,date,time){if(!/^\d{4}-\d{2}-\d{2}$/.test(date??'')||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time??''))return null;const formatDate=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t*1000)),formatTime=t=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Los_Angeles',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(t*1000));const requested=Number(time.slice(0,2))*60+Number(time.slice(3)),candidates=(rows??[]).filter(r=>formatDate(r.time)===date).map(r=>{const wall=formatTime(r.time);return {time:r.time,delta:Math.abs(Number(wall.slice(0,2))*60+Number(wall.slice(3))-requested)}}).sort((a,b)=>a.delta-b.delta);return candidates[0]?.delta<=30?candidates[0].time:null}
-export function validateState(input){if(!input||!Array.isArray(input.spots)||!Array.isArray(input.entries))throw Error('Invalid local data');if(input.spots.length>500||input.entries.length>5000)throw Error('Local record limit exceeded');const str=(s,n,required=false)=>{if(typeof s!=='string'||s.length>n||(required&&!s.trim()))throw Error('Invalid text field');return s.trim()};const id=s=>{s=str(s,100,true);if(!/^[\w-]+$/.test(s))throw Error('Invalid record ID');return s};const unique=rows=>{if(new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('Duplicate record ID')};const choice=(value,allowed)=>{value=str(value??'',30);if(value&&!allowed.includes(value))throw Error('Invalid observation');return value};const optionalNumber=(value,max,integer=false)=>{if(value===null||value===undefined||value==='')return null;const parsed=number(value);if(parsed===null||parsed<0||parsed>max||(integer&&!Number.isInteger(parsed)))throw Error('Invalid observation');return parsed};const spots=input.spots.map(s=>{if(!Number.isFinite(s.lat)||!Number.isFinite(s.lon)||s.lat<37.4||s.lat>38.04||s.lon< -122.85||s.lon> -122.08)throw Error('Pin is outside the atlas region');return {id:id(s.id),name:str(s.name,60,true),notes:str(s.notes??'',1000),lat:s.lat,lon:s.lon,referenceId:str(s.referenceId??'crissy',40,true),region:'YOUR SPOTS',exposure:s.exposure==='Open coast'?'Open coast':'Bay shoreline'}});const entries=input.entries.map(e=>{const o=e.observations??{};return {id:id(e.id),spot:str(e.spot,100,true),date:str(e.date,10,true),time:str(e.time??'',5),catch:str(e.catch??'',160),notes:str(e.notes??'',4000),observations:{comfort:choice(o.comfort,['easy','manageable','difficult','could-not-cast']),actualWind:optionalNumber(o.actualWind,100),clarity:choice(o.clarity,['clear','stained','murky']),bait:choice(o.bait,['none','some','heavy']),encounters:optionalNumber(o.encounters,999,true)}}});if(entries.some(e=>!/^\d{4}-\d{2}-\d{2}$/.test(e.date)||(!Number.isFinite(Date.parse(e.date))||new Date(e.date).toISOString().slice(0,10)!==e.date)))throw Error('Invalid trip date');if(entries.some(e=>e.time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(e.time)))throw Error('Invalid trip time');unique(spots);unique(entries);const limit=number(input.prefs?.windLimit??10);if(limit===null||limit<5||limit>20)throw Error('Wind preference must be 5–20 knots');return {spots,entries,prefs:{windLimit:limit}}}
-export function observationSummary(entries,spot){const trips=(entries??[]).filter(e=>e.spot===spot),observed=trips.filter(e=>{const o=e.observations??{};return o.comfort||Number.isFinite(o.actualWind)||o.clarity||o.bait||Number.isFinite(o.encounters)}),winds=observed.map(e=>e.observations.actualWind).filter(Number.isFinite);return {trips:trips.length,observed:observed.length,averageWind:winds.length?winds.reduce((sum,value)=>sum+value,0)/winds.length:null,recent:observed.slice().sort((a,b)=>(b.date+(b.time??'')).localeCompare(a.date+(a.time??''))).slice(0,3)}}
+export const number = (value) =>
+  value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
+    ? null
+    : Number(value);
+export const epoch = (value) => Date.parse(value.replace(' ', 'T') + 'Z') / 1000;
+export function distanceMiles(a, b) {
+  const rad = (x) => (x * Math.PI) / 180,
+    dlat = rad(b.lat - a.lat),
+    dlon = rad(b.lon - a.lon);
+  return (
+    3958.8 *
+    2 *
+    Math.asin(
+      Math.sqrt(
+        Math.sin(dlat / 2) ** 2 +
+          Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dlon / 2) ** 2,
+      ),
+    )
+  );
+}
+export function normalizeWeather(data) {
+  if (!data?.hourly?.time?.length) throw Error('No hourly forecast returned');
+  const h = data.hourly;
+  return {
+    grid: { lat: data.latitude, lon: data.longitude },
+    hours: h.time.map((time, i) => ({
+      time,
+      wind: number(h.wind_speed_10m?.[i]),
+      gust: number(h.wind_gusts_10m?.[i]),
+      direction: number(h.wind_direction_10m?.[i]),
+      rain: number(h.precipitation_probability?.[i]),
+      day: h.is_day?.[i] === 1,
+      temp: number(h.temperature_2m?.[i]),
+    })),
+    days: (data.daily?.time ?? []).map((time, i) => ({
+      time,
+      sunrise: data.daily.sunrise[i],
+      sunset: data.daily.sunset[i],
+    })),
+  };
+}
+export function normalizeMarine(data) {
+  if (!data?.hourly?.time?.length) throw Error('No marine forecast returned');
+  const h = data.hourly;
+  return {
+    grid: { lat: data.latitude, lon: data.longitude },
+    hours: h.time.map((time, i) => ({
+      time,
+      wave: number(h.wave_height?.[i]) === null ? null : number(h.wave_height[i]) * 3.28084,
+      swell:
+        number(h.swell_wave_height?.[i]) === null ? null : number(h.swell_wave_height[i]) * 3.28084,
+      period: number(h.swell_wave_period?.[i]),
+      direction: number(h.swell_wave_direction?.[i]),
+    })),
+  };
+}
+export function atTime(rows, time, tolerance = 1800) {
+  if (!rows?.length) return null;
+  let best = null,
+    delta = Infinity;
+  for (const row of rows) {
+    let d = Math.abs(row.time - time);
+    if (d < delta) {
+      best = row;
+      delta = d;
+    }
+  }
+  return delta <= tolerance ? best : null;
+}
+export function tideAt(rows, time) {
+  if (!rows?.length) return null;
+  const i = rows.findIndex((r) => r.time >= time);
+  if (i < 0) return null;
+  const b = rows[i],
+    a = rows[Math.max(0, i - 1)];
+  if (time < a.time || b.time - a.time > 900) return null;
+  if (a.value === null || b.value === null) return null;
+  const value =
+    b.time === a.time
+      ? b.value
+      : a.value + ((b.value - a.value) * (time - a.time)) / (b.time - a.time);
+  const neighbor = rows[Math.min(rows.length - 1, i + 1)];
+  return { value, rising: neighbor.value > a.value };
+}
+export function windWindows(rows, limit, now = Date.now() / 1000) {
+  const groups = [];
+  let group = [];
+  function finish() {
+    if (group.length >= 2)
+      groups.push({
+        start: group[0].time,
+        end: group.at(-1).time + 3600,
+        wind: Math.max(...group.map((r) => r.wind)),
+        gust: Math.max(...group.map((r) => r.gust)),
+        rain: Math.max(...group.map((r) => r.rain ?? 0)),
+      });
+    group = [];
+  }
+  for (const r of rows ?? []) {
+    const ok =
+      r.time >= now - 300 &&
+      r.day &&
+      r.wind !== null &&
+      r.gust !== null &&
+      r.wind <= limit &&
+      r.gust <= limit + 3;
+    if (!ok) {
+      finish();
+      continue;
+    }
+    if (group.length && r.time - group.at(-1).time !== 3600) finish();
+    group.push(r);
+  }
+  finish();
+  return groups;
+}
+export function directionName(deg) {
+  if (deg === null || deg === undefined) return '—';
+  return [
+    'N',
+    'NNE',
+    'NE',
+    'ENE',
+    'E',
+    'ESE',
+    'SE',
+    'SSE',
+    'S',
+    'SSW',
+    'SW',
+    'WSW',
+    'W',
+    'WNW',
+    'NW',
+    'NNW',
+  ][Math.round(deg / 22.5) % 16];
+}
+export function forecastTimeFor(rows, date, time) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time ?? ''))
+    return null;
+  const formatDate = (t) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(t * 1000)),
+    formatTime = (t) =>
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Los_Angeles',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(new Date(t * 1000));
+  const requested = Number(time.slice(0, 2)) * 60 + Number(time.slice(3)),
+    candidates = (rows ?? [])
+      .filter((r) => formatDate(r.time) === date)
+      .map((r) => {
+        const wall = formatTime(r.time);
+        return {
+          time: r.time,
+          delta: Math.abs(Number(wall.slice(0, 2)) * 60 + Number(wall.slice(3)) - requested),
+        };
+      })
+      .sort((a, b) => a.delta - b.delta);
+  return candidates[0]?.delta <= 30 ? candidates[0].time : null;
+}
+export function validateState(input) {
+  if (!input || !Array.isArray(input.spots) || !Array.isArray(input.entries))
+    throw Error('Invalid local data');
+  if (input.spots.length > 500 || input.entries.length > 5000)
+    throw Error('Local record limit exceeded');
+  const str = (s, n, required = false) => {
+    if (typeof s !== 'string' || s.length > n || (required && !s.trim()))
+      throw Error('Invalid text field');
+    return s.trim();
+  };
+  const id = (s) => {
+    s = str(s, 100, true);
+    if (!/^[\w-]+$/.test(s)) throw Error('Invalid record ID');
+    return s;
+  };
+  const unique = (rows) => {
+    if (new Set(rows.map((r) => r.id)).size !== rows.length) throw Error('Duplicate record ID');
+  };
+  const choice = (value, allowed) => {
+    value = str(value ?? '', 30);
+    if (value && !allowed.includes(value)) throw Error('Invalid observation');
+    return value;
+  };
+  const optionalNumber = (value, max, integer = false) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = number(value);
+    if (parsed === null || parsed < 0 || parsed > max || (integer && !Number.isInteger(parsed)))
+      throw Error('Invalid observation');
+    return parsed;
+  };
+  const spots = input.spots.map((s) => {
+    if (
+      !Number.isFinite(s.lat) ||
+      !Number.isFinite(s.lon) ||
+      s.lat < 37.4 ||
+      s.lat > 38.04 ||
+      s.lon < -122.85 ||
+      s.lon > -122.08
+    )
+      throw Error('Pin is outside the atlas region');
+    return {
+      id: id(s.id),
+      name: str(s.name, 60, true),
+      notes: str(s.notes ?? '', 1000),
+      lat: s.lat,
+      lon: s.lon,
+      referenceId: str(s.referenceId ?? 'crissy', 40, true),
+      region: 'YOUR SPOTS',
+      exposure: s.exposure === 'Open coast' ? 'Open coast' : 'Bay shoreline',
+    };
+  });
+  const entries = input.entries.map((e) => {
+    const o = e.observations ?? {};
+    return {
+      id: id(e.id),
+      spot: str(e.spot, 100, true),
+      date: str(e.date, 10, true),
+      time: str(e.time ?? '', 5),
+      catch: str(e.catch ?? '', 160),
+      notes: str(e.notes ?? '', 4000),
+      observations: {
+        comfort: choice(o.comfort, ['easy', 'manageable', 'difficult', 'could-not-cast']),
+        actualWind: optionalNumber(o.actualWind, 100),
+        clarity: choice(o.clarity, ['clear', 'stained', 'murky']),
+        bait: choice(o.bait, ['none', 'some', 'heavy']),
+        encounters: optionalNumber(o.encounters, 999, true),
+      },
+    };
+  });
+  if (
+    entries.some(
+      (e) =>
+        !/^\d{4}-\d{2}-\d{2}$/.test(e.date) ||
+        !Number.isFinite(Date.parse(e.date)) ||
+        new Date(e.date).toISOString().slice(0, 10) !== e.date,
+    )
+  )
+    throw Error('Invalid trip date');
+  if (entries.some((e) => e.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(e.time)))
+    throw Error('Invalid trip time');
+  unique(spots);
+  unique(entries);
+  const limit = number(input.prefs?.windLimit ?? 10);
+  if (limit === null || limit < 5 || limit > 20) throw Error('Wind preference must be 5–20 knots');
+  return { spots, entries, prefs: { windLimit: limit } };
+}
+export function observationSummary(entries, spot) {
+  const trips = (entries ?? []).filter((e) => e.spot === spot),
+    observed = trips.filter((e) => {
+      const o = e.observations ?? {};
+      return (
+        o.comfort ||
+        Number.isFinite(o.actualWind) ||
+        o.clarity ||
+        o.bait ||
+        Number.isFinite(o.encounters)
+      );
+    }),
+    winds = observed.map((e) => e.observations.actualWind).filter(Number.isFinite);
+  return {
+    trips: trips.length,
+    observed: observed.length,
+    averageWind: winds.length ? winds.reduce((sum, value) => sum + value, 0) / winds.length : null,
+    recent: observed
+      .slice()
+      .sort((a, b) => (b.date + (b.time ?? '')).localeCompare(a.date + (a.time ?? '')))
+      .slice(0, 3),
+  };
+}
 
 // Half-cosine interpolation matches each predicted extremum without overshoot.
 // Only bridge valid alternating events; never extrapolate or infer current speed.
-export function estimateTideAt(events,time){
- const rows=[...(events??[])].sort((a,b)=>a.time-b.time);
- const upper=rows.findIndex(r=>r.time>time),i=upper===-1?rows.length-1:upper;
- const a=rows[i-1],b=rows[i];
- if(!a||!b||!Number.isFinite(time)||!Number.isFinite(a.time)||!Number.isFinite(b.time)||!Number.isFinite(a.value)||!Number.isFinite(b.value)||time<a.time||time>b.time||b.time<=a.time||b.time-a.time>18*3600||!['H','L'].includes(a.type)||!['H','L'].includes(b.type)||a.type===b.type)return null;
- if((a.type==='H'&&a.value<=b.value)||(a.type==='L'&&a.value>=b.value))return null;
- const fraction=(time-a.time)/(b.time-a.time);
- return {value:a.value+(b.value-a.value)*(1-Math.cos(Math.PI*fraction))/2,rising:b.value>a.value,estimated:true};
+export function estimateTideAt(events, time) {
+  const rows = [...(events ?? [])].sort((a, b) => a.time - b.time);
+  const upper = rows.findIndex((r) => r.time > time),
+    i = upper === -1 ? rows.length - 1 : upper;
+  const a = rows[i - 1],
+    b = rows[i];
+  if (
+    !a ||
+    !b ||
+    !Number.isFinite(time) ||
+    !Number.isFinite(a.time) ||
+    !Number.isFinite(b.time) ||
+    !Number.isFinite(a.value) ||
+    !Number.isFinite(b.value) ||
+    time < a.time ||
+    time > b.time ||
+    b.time <= a.time ||
+    b.time - a.time > 18 * 3600 ||
+    !['H', 'L'].includes(a.type) ||
+    !['H', 'L'].includes(b.type) ||
+    a.type === b.type
+  )
+    return null;
+  if ((a.type === 'H' && a.value <= b.value) || (a.type === 'L' && a.value >= b.value)) return null;
+  const fraction = (time - a.time) / (b.time - a.time);
+  return {
+    value: a.value + ((b.value - a.value) * (1 - Math.cos(Math.PI * fraction))) / 2,
+    rising: b.value > a.value,
+    estimated: true,
+  };
 }
-export function displayTideAt(detail,time){
- if(detail?.tides?.status==='events-only')return estimateTideAt(detail?.highLow?.value,time);
- return tideAt(detail?.tides?.value,time);
+export function displayTideAt(detail, time) {
+  if (detail?.tides?.status === 'events-only') return estimateTideAt(detail?.highLow?.value, time);
+  return tideAt(detail?.tides?.value, time);
 }
-export function estimatedTideRows(events,start,end){
- const times=new Set([start,end]);for(let t=start;t<end;t+=360)times.add(t);
- for(const e of events??[])if(e.time>=start&&e.time<=end)times.add(e.time);
- return [...times].sort((a,b)=>a-b).map(time=>({time,value:estimateTideAt(events,time)?.value??null}));
+export function estimatedTideRows(events, start, end) {
+  const times = new Set([start, end]);
+  for (let t = start; t < end; t += 360) times.add(t);
+  for (const e of events ?? []) if (e.time >= start && e.time <= end) times.add(e.time);
+  return [...times]
+    .sort((a, b) => a - b)
+    .map((time) => ({ time, value: estimateTideAt(events, time)?.value ?? null }));
 }
