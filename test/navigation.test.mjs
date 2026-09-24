@@ -24,3 +24,8 @@ test('journal, settings, direct links, and hash navigation show the right page',
 test('invalid location links fall back to the atlas without crashing',()=>{
  const {context:c}=setup();for(const hash of ['#spot/missing','#spot/%invalid']){c.location.hash=hash;vm.runInContext('applyRoute()',c);assert.equal(c.currentPage,'atlas')}
 });
+test('Atmo wind links preserve the selected spot and forecast time and open safely',()=>{
+ const context=vm.createContext({});const start=app.indexOf('const atmoWindUrl');vm.runInContext(app.slice(start,app.indexOf(';\n',start)+1),context);
+ const url=vm.runInContext("atmoWindUrl({lat:37.77009,lon:-122.51363},1790222400.4)",context);assert.equal(url,'https://sf.atmo.ai/wind@37.77009,-122.51363,10.77,20,0,1790222400,1.50');
+ const link=app.match(/<a class="metric-link"[^>]+>/)?.[0]??'';assert.match(link,/target="_blank"/);assert.match(link,/rel="noreferrer"/);assert.match(link,/atmoWindUrl\s*\(\s*s\s*,\s*t\s*\)/);
+});
