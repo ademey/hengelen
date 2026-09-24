@@ -1,23 +1,273 @@
-import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
-import {resolve} from 'node:path';
-import {presets} from './dist/spots.js';
-import {normalizeWeather,normalizeMarine,number,epoch,distanceMiles} from './dist/domain.js';
-const cacheDir=resolve(import.meta.dirname,'data/cache');
-const memory=new Map(),pending=new Map(),cooldowns=new Map();
-const hash=key=>createHash('sha256').update(key).digest('hex');
-export async function cached(key,ttl,fetcher){const failed=cooldowns.get(key);if(failed&&failed.until>Date.now())return failed.result;if(pending.has(key))return pending.get(key);const task=(async()=>{let prior=memory.get(key);if(!prior){try{prior=JSON.parse(await readFile(resolve(cacheDir,hash(key)+'.json'),'utf8'));memory.set(key,prior)}catch{}}if(prior&&Date.now()-prior.fetchedAt<ttl)return {...prior,status:'ok'};try{const value=await fetcher();const record={value,fetchedAt:Date.now()};memory.set(key,record);try{await mkdir(cacheDir,{recursive:true});const file=resolve(cacheDir,hash(key)+'.json');await writeFile(file+'.tmp',JSON.stringify(record));await rename(file+'.tmp',file)}catch{}return {...record,status:'ok'}}catch(e){return prior?{...prior,status:'stale',error:e.message}:{value:null,fetchedAt:null,status:'unavailable',error:e.message}}})();pending.set(key,task);try{return await task}finally{pending.delete(key)}}
-async function json(url){const response=await fetch(url,{headers:{'User-Agent':'Hengelen/0.2 (local personal fishing planner)','Accept':'application/json'},signal:AbortSignal.timeout(18000)});if(!response.ok)throw Error(`Provider returned HTTP ${response.status}`);const data=await response.json();if(data.error)throw Error(typeof data.error==='object'?data.error.message:data.reason??String(data.error));return data}
-const build=(base,p)=>base+'?'+new URLSearchParams(p);
-const forecastURL=spots=>build('https://api.open-meteo.com/v1/forecast',{latitude:spots.map(s=>s.lat).join(','),longitude:spots.map(s=>s.lon).join(','),hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,is_day,temperature_2m',daily:'sunrise,sunset',wind_speed_unit:'kn',temperature_unit:'fahrenheit',timezone:'America/Los_Angeles',timeformat:'unixtime',forecast_days:7});
-export async function overview(){return cached('weather-presets-v3-'+presets.map(s=>s.id+':'+s.lat+','+s.lon).join('|'),30*60000,async()=>{const values=await json(forecastURL(presets));if(!Array.isArray(values)||values.length!==presets.length)throw Error('Incomplete regional forecast');return Object.fromEntries(presets.map((s,i)=>[s.id,normalizeWeather(values[i])]))})}
-async function weather(spot){if(presets.some(s=>s.id===spot.id)){const all=await overview();return {...all,value:all.value?.[spot.id]??null}}return cached('weather-'+spot.lat.toFixed(4)+','+spot.lon.toFixed(4),30*60000,async()=>normalizeWeather(await json(forecastURL([spot]))))}
-function dates(){let now=new Date();return {begin_date:new Date(+now-86400000).toISOString().slice(0,10).replaceAll('-',''),end_date:new Date(+now+8*86400000).toISOString().slice(0,10).replaceAll('-','')}}
-async function noaa(params){return json(build('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter',{...dates(),time_zone:'gmt',units:'english',format:'json',application:'Hengelen',...params}))}
-async function tides(station,interval){return cached('tide-'+station.id+'-'+interval+'-'+new Date().toISOString().slice(0,10),6*3600000,async()=>{const d=await noaa({station:station.id,product:'predictions',datum:'MLLW',interval});if(!d.predictions?.length)throw Error('No tide predictions returned');return d.predictions.map(p=>({time:epoch(p.t),value:number(p.v),type:p.type??null}))})}
-async function currents(station){if(!station)return {status:'not-applicable',value:null,fetchedAt:null};return cached('current-'+station.id+'-'+new Date().toISOString().slice(0,10),6*3600000,async()=>{const d=await noaa({station:station.id,bin:station.bin,product:'currents_predictions',interval:'max_slack'});if(!d.current_predictions?.cp?.length)throw Error('No current events returned');return d.current_predictions.cp.map(p=>({time:epoch(p.Time),type:p.Type,speed:number(p.Velocity_Major),depth:number(p.Depth)}))})}
-async function observation(product){return cached('observation-'+product,5*60000,async()=>{const d=await json(build('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter',{date:'latest',station:'9414290',product,time_zone:'gmt',units:'english',format:'json',datum:'MLLW'}));if(!d.data?.length)throw Error('No observation available');const p=d.data.at(-1);return {time:epoch(p.t),wind:number(p.s),gust:number(p.g),direction:number(p.d),value:number(p.v),station:'9414290',stationName:'San Francisco / Torpedo Wharf'}})}
-async function marine(spot){if(!spot.marine)return {status:'not-applicable',value:null,fetchedAt:null};return cached('marine-'+spot.marine.join(','),3600000,async()=>normalizeMarine(await json(build('https://marine-api.open-meteo.com/v1/marine',{latitude:spot.marine[1],longitude:spot.marine[0],hourly:'wave_height,swell_wave_height,swell_wave_period,swell_wave_direction',timezone:'America/Los_Angeles',timeformat:'unixtime',forecast_days:7}))))}
-async function alerts(spot){return cached('alerts-'+spot.lat.toFixed(3)+','+spot.lon.toFixed(3),10*60000,async()=>{const d=await json(build('https://api.weather.gov/alerts/active',{point:`${spot.lat},${spot.lon}`}));if(!Array.isArray(d.features))throw Error('No alerts response');return d.features.map(f=>({id:f.id,event:f.properties.event,headline:f.properties.headline,description:f.properties.description,instruction:f.properties.instruction,severity:f.properties.severity,onset:f.properties.onset,expires:f.properties.expires}))})}
-export function resolveSpot(id,state){const preset=presets.find(s=>s.id===id);if(preset)return preset;const custom=state.spots.find(s=>s.id===id);if(!custom)return null;const ref=presets.find(s=>s.id===custom.referenceId)||presets.reduce((a,b)=>distanceMiles(custom,a)<distanceMiles(custom,b)?a:b);return {...custom,tideStation:ref.tideStation,currentStation:ref.currentStation,marine:custom.exposure==='Open coast'?[custom.lon,custom.lat]:null,bearing:null,source:null,access:'Personal pin',referenceName:ref.name}}
-export async function details(spot){const [w,t,h,c,m,o,wl,wt,a]=await Promise.all([weather(spot),spot.tideStation.continuous?tides(spot.tideStation,6):Promise.resolve({status:'events-only',value:null}),tides(spot.tideStation,'hilo'),currents(spot.currentStation),marine(spot),observation('wind'),observation('water_level'),observation('water_temperature'),alerts(spot)]);return {spot,weather:w,tides:t,highLow:h,currents:c,marine:m,observedWind:o,observedWaterLevel:wl,observedTemperature:wt,alerts:a,servedAt:Date.now()}}
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
+import { presets } from './dist/spots.js';
+import { normalizeWeather, normalizeMarine, number, epoch, distanceMiles } from './dist/domain.js';
+const cacheDir = resolve(import.meta.dirname, 'data/cache');
+const memory = new Map(),
+  pending = new Map(),
+  cooldowns = new Map();
+const hash = (key) => createHash('sha256').update(key).digest('hex');
+export async function cached(key, ttl, fetcher) {
+  const failed = cooldowns.get(key);
+  if (failed && failed.until > Date.now()) return failed.result;
+  if (pending.has(key)) return pending.get(key);
+  const task = (async () => {
+    let prior = memory.get(key);
+    if (!prior) {
+      try {
+        prior = JSON.parse(await readFile(resolve(cacheDir, hash(key) + '.json'), 'utf8'));
+        memory.set(key, prior);
+      } catch {}
+    }
+    if (prior && Date.now() - prior.fetchedAt < ttl) return { ...prior, status: 'ok' };
+    try {
+      const value = await fetcher();
+      const record = { value, fetchedAt: Date.now() };
+      memory.set(key, record);
+      try {
+        await mkdir(cacheDir, { recursive: true });
+        const file = resolve(cacheDir, hash(key) + '.json');
+        await writeFile(file + '.tmp', JSON.stringify(record));
+        await rename(file + '.tmp', file);
+      } catch {}
+      return { ...record, status: 'ok' };
+    } catch (e) {
+      return prior
+        ? { ...prior, status: 'stale', error: e.message }
+        : { value: null, fetchedAt: null, status: 'unavailable', error: e.message };
+    }
+  })();
+  pending.set(key, task);
+  try {
+    return await task;
+  } finally {
+    pending.delete(key);
+  }
+}
+async function json(url) {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Hengelen/0.2 (local personal fishing planner)',
+      Accept: 'application/json',
+    },
+    signal: AbortSignal.timeout(18000),
+  });
+  if (!response.ok) throw Error(`Provider returned HTTP ${response.status}`);
+  const data = await response.json();
+  if (data.error)
+    throw Error(
+      typeof data.error === 'object' ? data.error.message : (data.reason ?? String(data.error)),
+    );
+  return data;
+}
+const build = (base, p) => base + '?' + new URLSearchParams(p);
+const forecastURL = (spots) =>
+  build('https://api.open-meteo.com/v1/forecast', {
+    latitude: spots.map((s) => s.lat).join(','),
+    longitude: spots.map((s) => s.lon).join(','),
+    hourly:
+      'wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,is_day,temperature_2m',
+    daily: 'sunrise,sunset',
+    wind_speed_unit: 'kn',
+    temperature_unit: 'fahrenheit',
+    timezone: 'America/Los_Angeles',
+    timeformat: 'unixtime',
+    forecast_days: 7,
+  });
+export async function overview() {
+  return cached(
+    'weather-presets-v3-' + presets.map((s) => s.id + ':' + s.lat + ',' + s.lon).join('|'),
+    30 * 60000,
+    async () => {
+      const values = await json(forecastURL(presets));
+      if (!Array.isArray(values) || values.length !== presets.length)
+        throw Error('Incomplete regional forecast');
+      return Object.fromEntries(presets.map((s, i) => [s.id, normalizeWeather(values[i])]));
+    },
+  );
+}
+async function weather(spot) {
+  if (presets.some((s) => s.id === spot.id)) {
+    const all = await overview();
+    return { ...all, value: all.value?.[spot.id] ?? null };
+  }
+  return cached(
+    'weather-' + spot.lat.toFixed(4) + ',' + spot.lon.toFixed(4),
+    30 * 60000,
+    async () => normalizeWeather(await json(forecastURL([spot]))),
+  );
+}
+function dates() {
+  let now = new Date();
+  return {
+    begin_date: new Date(+now - 86400000).toISOString().slice(0, 10).replaceAll('-', ''),
+    end_date: new Date(+now + 8 * 86400000).toISOString().slice(0, 10).replaceAll('-', ''),
+  };
+}
+async function noaa(params) {
+  return json(
+    build('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter', {
+      ...dates(),
+      time_zone: 'gmt',
+      units: 'english',
+      format: 'json',
+      application: 'Hengelen',
+      ...params,
+    }),
+  );
+}
+async function tides(station, interval) {
+  return cached(
+    'tide-' + station.id + '-' + interval + '-' + new Date().toISOString().slice(0, 10),
+    6 * 3600000,
+    async () => {
+      const d = await noaa({
+        station: station.id,
+        product: 'predictions',
+        datum: 'MLLW',
+        interval,
+      });
+      if (!d.predictions?.length) throw Error('No tide predictions returned');
+      return d.predictions.map((p) => ({
+        time: epoch(p.t),
+        value: number(p.v),
+        type: p.type ?? null,
+      }));
+    },
+  );
+}
+async function currents(station) {
+  if (!station) return { status: 'not-applicable', value: null, fetchedAt: null };
+  return cached(
+    'current-' + station.id + '-' + new Date().toISOString().slice(0, 10),
+    6 * 3600000,
+    async () => {
+      const d = await noaa({
+        station: station.id,
+        bin: station.bin,
+        product: 'currents_predictions',
+        interval: 'max_slack',
+      });
+      if (!d.current_predictions?.cp?.length) throw Error('No current events returned');
+      return d.current_predictions.cp.map((p) => ({
+        time: epoch(p.Time),
+        type: p.Type,
+        speed: number(p.Velocity_Major),
+        depth: number(p.Depth),
+      }));
+    },
+  );
+}
+async function observation(product) {
+  return cached('observation-' + product, 5 * 60000, async () => {
+    const d = await json(
+      build('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter', {
+        date: 'latest',
+        station: '9414290',
+        product,
+        time_zone: 'gmt',
+        units: 'english',
+        format: 'json',
+        datum: 'MLLW',
+      }),
+    );
+    if (!d.data?.length) throw Error('No observation available');
+    const p = d.data.at(-1);
+    return {
+      time: epoch(p.t),
+      wind: number(p.s),
+      gust: number(p.g),
+      direction: number(p.d),
+      value: number(p.v),
+      station: '9414290',
+      stationName: 'San Francisco / Torpedo Wharf',
+    };
+  });
+}
+async function marine(spot) {
+  if (!spot.marine) return { status: 'not-applicable', value: null, fetchedAt: null };
+  return cached('marine-' + spot.marine.join(','), 3600000, async () =>
+    normalizeMarine(
+      await json(
+        build('https://marine-api.open-meteo.com/v1/marine', {
+          latitude: spot.marine[1],
+          longitude: spot.marine[0],
+          hourly: 'wave_height,swell_wave_height,swell_wave_period,swell_wave_direction',
+          timezone: 'America/Los_Angeles',
+          timeformat: 'unixtime',
+          forecast_days: 7,
+        }),
+      ),
+    ),
+  );
+}
+async function alerts(spot) {
+  return cached(
+    'alerts-' + spot.lat.toFixed(3) + ',' + spot.lon.toFixed(3),
+    10 * 60000,
+    async () => {
+      const d = await json(
+        build('https://api.weather.gov/alerts/active', { point: `${spot.lat},${spot.lon}` }),
+      );
+      if (!Array.isArray(d.features)) throw Error('No alerts response');
+      return d.features.map((f) => ({
+        id: f.id,
+        event: f.properties.event,
+        headline: f.properties.headline,
+        description: f.properties.description,
+        instruction: f.properties.instruction,
+        severity: f.properties.severity,
+        onset: f.properties.onset,
+        expires: f.properties.expires,
+      }));
+    },
+  );
+}
+export function resolveSpot(id, state) {
+  const preset = presets.find((s) => s.id === id);
+  if (preset) return preset;
+  const custom = state.spots.find((s) => s.id === id);
+  if (!custom) return null;
+  const ref =
+    presets.find((s) => s.id === custom.referenceId) ||
+    presets.reduce((a, b) => (distanceMiles(custom, a) < distanceMiles(custom, b) ? a : b));
+  return {
+    ...custom,
+    tideStation: ref.tideStation,
+    currentStation: ref.currentStation,
+    marine: custom.exposure === 'Open coast' ? [custom.lon, custom.lat] : null,
+    bearing: null,
+    source: null,
+    access: 'Personal pin',
+    referenceName: ref.name,
+  };
+}
+export async function details(spot) {
+  const [w, t, h, c, m, o, wl, wt, a] = await Promise.all([
+    weather(spot),
+    spot.tideStation.continuous
+      ? tides(spot.tideStation, 6)
+      : Promise.resolve({ status: 'events-only', value: null }),
+    tides(spot.tideStation, 'hilo'),
+    currents(spot.currentStation),
+    marine(spot),
+    observation('wind'),
+    observation('water_level'),
+    observation('water_temperature'),
+    alerts(spot),
+  ]);
+  return {
+    spot,
+    weather: w,
+    tides: t,
+    highLow: h,
+    currents: c,
+    marine: m,
+    observedWind: o,
+    observedWaterLevel: wl,
+    observedTemperature: wt,
+    alerts: a,
+    servedAt: Date.now(),
+  };
+}
