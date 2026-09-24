@@ -1,7 +1,7 @@
 # Hengelen
 A local shore-fishing field atlas for San Francisco Bay and the coast from Stinson Beach to Half Moon Bay.
 
-Run `npm run dev`, then open http://127.0.0.1:4317 . Requires Node 22+ and internet for new forecasts. There are no package dependencies, API keys, or hosted services to configure. The server binds to loopback only.
+Run `npm install` once, then `npm run dev` and open http://127.0.0.1:4317 . Requires Node 22+ and internet for new forecasts. The development command builds the client into generated `dist/` output before starting the loopback-only server. There are no API keys or hosted services to configure.
 
 ## Conditions
 - Open-Meteo: seven-day hourly wind, gusts, wind direction, rain chance, air temperature, sunrise/sunset and daylight; knots and °F. Forecast grid coordinates are disclosed. Open-Meteo free access is for personal/noncommercial use; data attribution CC BY 4.0.
@@ -28,7 +28,7 @@ Natural Earth 1:10m land (public domain). Terrain: Mapzen Terrain Tiles on AWS, 
 Visual inspiration: inkboard/system-atlas (MIT), adapted to a geographical atlas. Plex fonts copied from the local Kritiek reference project. Drag or arrow keys on the focused map to pan; zoom reveals finer contours; Refit resets.
 
 ## Verification
-`npm run check` checks JS syntax. `npm test` checks unit conversions, missing-data behavior, tide interpolation boundaries, wind-window criteria, and state validation. API smoke checks cover forecast sources and local storage persistence/error handling.
+`npm run build` creates the disposable client in `dist/` from authored files in `src/` and static assets in `public/`. `npm run check` checks JavaScript syntax and verifies a production build. `npm test` checks unit conversions, missing-data behavior, tide interpolation boundaries, wind-window criteria, and state validation. API smoke checks cover forecast sources and local storage persistence/error handling.
 
 ### Session planning
 
