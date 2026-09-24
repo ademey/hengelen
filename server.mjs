@@ -1,8 +1,8 @@
 import http from 'node:http';
 import { readFile, writeFile, mkdir, rename, copyFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
-import { presets } from './dist/spots.js';
-import { validateState } from './dist/domain.js';
+import { presets } from './src/spots.js';
+import { validateState } from './src/domain.js';
 import { overview, details, resolveSpot } from './forecast.mjs';
 const root = resolve(import.meta.dirname, 'dist'),
   dataDir = resolve(process.env.HENGELEN_DATA_DIR || resolve(import.meta.dirname, 'data')),

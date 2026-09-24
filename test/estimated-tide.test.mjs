@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { estimateTideAt, estimatedTideRows, displayTideAt } from '../dist/domain.js';
-import { conditionsTimeline } from '../dist/timeline.js';
+import { estimateTideAt, estimatedTideRows, displayTideAt } from '../src/domain.js';
+import { conditionsTimeline } from '../src/timeline.js';
 const events = [
   { time: -3600, type: 'L', value: 1 },
   { time: 18000, type: 'H', value: 7 },

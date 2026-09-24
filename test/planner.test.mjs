@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fishingWindows, distinctWindows } from '../dist/planner.js';
-import { conditionsTimeline } from '../dist/timeline.js';
+import { fishingWindows, distinctWindows } from '../src/planner.js';
+import { conditionsTimeline } from '../src/timeline.js';
 const weather = {
   hours: Array.from({ length: 12 }, (_, i) => ({
     time: i * 3600,
