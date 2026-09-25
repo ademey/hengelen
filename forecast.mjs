@@ -1,8 +1,8 @@
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { presets } from './dist/spots.js';
-import { normalizeWeather, normalizeMarine, number, epoch, distanceMiles } from './dist/domain.js';
+import { presets } from './src/spots.js';
+import { normalizeWeather, normalizeMarine, number, epoch, distanceMiles } from './src/domain.js';
 const cacheDir = resolve(import.meta.dirname, 'data/cache');
 const memory = new Map(),
   pending = new Map(),

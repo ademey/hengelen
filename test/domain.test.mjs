@@ -12,7 +12,7 @@ import {
   distanceMiles,
   forecastTimeFor,
   observationSummary,
-} from '../dist/domain.js';
+} from '../src/domain.js';
 test('missing readings remain unavailable, never zero', () => {
   for (const v of [null, undefined, '', 'bad']) assert.equal(number(v), null);
   assert.equal(number('0'), 0);
