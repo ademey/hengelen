@@ -3,14 +3,20 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "dev": "node server.mjs",
-    "check": "node --check dist/app.js && node --check dist/domain.js && node --check dist/planner.js && node --check dist/timeline.js && node --check forecast.mjs && node --check server.mjs",
+    "build": "vite build",
+    "dev": "npm run build && node server.mjs",
+    "start": "node server.mjs",
+    "check": "node --check src/app.js && node --check src/domain.js && node --check src/planner.js && node --check src/timeline.js && node --check forecast.mjs && node --check server.mjs && vite build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
-    "prettier": "3.9.9"
+    "prettier": "3.9.9",
+    "vite": "8.3.1"
   }
 }
