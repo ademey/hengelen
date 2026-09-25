@@ -2,6 +2,8 @@
 
 A desktop-first shore-fishing field atlas for San Francisco Bay and the coast from Stinson Beach to Half Moon Bay. The current runtime is local; the planned public edition is documented below.
 
+![Hengelen dashboard showing the San Francisco Bay fishing atlas](docs/images/hengelen-dashboard.png)
+
 Run `npm install` once, then `npm run dev` and open http://127.0.0.1:4317. Requires Node 22.12+ and internet access for new forecasts. The development command builds the client into generated `dist/` output before starting the loopback-only server. There are no API keys or hosted services to configure.
 
 ## Project layout
