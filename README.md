@@ -4,13 +4,14 @@ A desktop-first shore-fishing field atlas for San Francisco Bay and the coast fr
 
 ![Hengelen dashboard showing the San Francisco Bay fishing atlas](docs/images/hengelen-dashboard.png)
 
-Run `npm install` once, then `npm run dev` and open http://127.0.0.1:4317. Requires Node 22.12+ and internet access for new forecasts. The development command builds the client into generated `dist/` output before starting the loopback-only server. There are no API keys or hosted services to configure.
+Run `npm install` once, then `npm run dev` and open http://127.0.0.1:4317. Requires Node 22.12+ and internet access for new forecasts. Development watches `src/` and `public/`, rebuilds generated `dist/` output after edits, and keeps the loopback-only server running; reload the browser to see a rebuild. `npm start` creates a production build before starting the same local server. There are no API keys or hosted services to configure.
 
 ## Project layout
 
 - `src/`: authored browser code, HTML, and CSS.
 - `public/`: static map data and fonts copied into the build.
 - `dist/`: disposable Vite output; do not edit it directly.
+- `dev.mjs`: watched development build and local-server startup.
 - `server.mjs`: loopback-only HTTP server and local state endpoints.
 - `forecast.mjs`: provider requests, normalization, and caching.
 - `test/`: Node unit and source-structure tests.
