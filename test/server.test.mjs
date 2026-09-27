@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { rename } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -156,4 +157,26 @@ test('sends HSTS only when explicitly enabled', async () => {
     assert.equal(res.status, 200);
     assert.match(res.headers['strict-transport-security'], /max-age=\d+/);
   });
+});
+
+test('refuses to start without a built client', async () => {
+  const index = new URL('../dist/index.html', import.meta.url);
+  const hidden = new URL('../dist/index.html.missing-dist-check', import.meta.url);
+  await rename(index, hidden);
+  try {
+    const child = spawn(process.execPath, ['server.mjs'], {
+      cwd: root,
+      env: { ...process.env, PORT: String(await freePort()) },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const [code, stderr] = await new Promise((resolve) => {
+      const chunks = [];
+      child.stderr.on('data', (c) => chunks.push(c));
+      child.on('exit', (c) => resolve([c, Buffer.concat(chunks).toString()]));
+    });
+    assert.equal(code, 1);
+    assert.match(stderr, /npm run build/);
+  } finally {
+    await rename(hidden, index);
+  }
 });

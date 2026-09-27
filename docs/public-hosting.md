@@ -102,6 +102,8 @@ Before public preview:
 
 The Node server now supports direct public hosting: bind it with `HENGELEN_HOST=0.0.0.0` (or `HOST`), list the public hostname in `HENGELEN_ALLOWED_HOSTS` (plain hostnames, no ports — the server strips any port from the request's `Host` header before matching), and set `HENGELEN_HSTS=1` when serving behind HTTPS. It keeps no filesystem state and serves a read-only API, with a host allowlist and security headers on every response.
 
+The client is a Vite build artifact and is not committed: run `npm run build` during the host's build phase, with the devDependencies installed (`vite` is a devDependency, so a production-only install cannot build). Use `node server.mjs` as the start command; `npm start` rebuilds through `prestart` and is intended for local use. The server exits with a clear error when `dist/index.html` is missing instead of serving 404s.
+
 ## Preview validation
 
 Use a private preview URL before production. Record results for:

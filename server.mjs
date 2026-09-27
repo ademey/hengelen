@@ -1,9 +1,18 @@
 import http from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 
 import { overview, details, resolveSpot } from './forecast.mjs';
 const root = resolve(import.meta.dirname, 'dist');
+// The client is a Vite build artifact and is not committed: refuse to start
+// with a clear message instead of serving 404s when it was never built.
+if (!existsSync(resolve(root, 'index.html'))) {
+  console.error(
+    'hengelen: dist/index.html not found. Build the client first with `npm run build` (requires the devDependencies).',
+  );
+  process.exit(1);
+}
 const port = Number(process.env.PORT || 4317),
   // Match the Host header without any port: browsers and proxies send
   // `Host: name:port` for non-default ports, so matching the raw header
