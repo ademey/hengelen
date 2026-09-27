@@ -22,7 +22,15 @@ async function startServer(env = {}) {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.mjs'], {
     cwd: root,
-    env: { ...process.env, PORT: String(port), ...env },
+    env: {
+      ...process.env,
+      HOST: '',
+      HENGELEN_HOST: '',
+      HENGELEN_ALLOWED_HOSTS: '',
+      HENGELEN_HSTS: '',
+      PORT: String(port),
+      ...env,
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const errors = [];
