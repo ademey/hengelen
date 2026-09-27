@@ -36,8 +36,6 @@ Access notes link to official NPS, State Parks and EBRPD sources, reviewed 2026-
 ## Records
 The hosted build keeps no server-side records: the journal, custom pins, and saved preferences were removed for public hosting. The wind-limit control applies for the current visit only. Nothing is written to disk — there is no `data/state.json`, no export, and no forecast cache files. Forecast responses are cached in memory for the intervals listed above; restarting the server refetches.
 
-The planned first public edition excludes journals, custom spots, accounts, and backup/import. Small preferences such as the wind-comfort limit stay in browser `localStorage`.
-
 ## Map
 Natural Earth 1:10m land (public domain). Terrain: Mapzen Terrain Tiles on AWS, USGS 3DEP, accessed 2026-09-21; resampled and generalized into 50 m contours (100 m overview). Roads/bridges © OpenStreetMap contributors, ODbL. Sources: https://registry.opendata.aws/terrain-tiles/ , https://github.com/tilezen/joerd/blob/master/docs/attribution.md , https://www.openstreetmap.org/copyright . Shoreline bands are decorative, not bathymetry. Orientation labels and geometry are generalized; this is not a navigation chart.
 
