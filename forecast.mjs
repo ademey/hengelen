@@ -1,36 +1,19 @@
-import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
 import { presets } from './src/spots.js';
-import { normalizeWeather, normalizeMarine, number, epoch, distanceMiles } from './src/domain.js';
-const cacheDir = resolve(import.meta.dirname, 'data/cache');
+import { normalizeWeather, normalizeMarine, number, epoch } from './src/domain.js';
 const memory = new Map(),
   pending = new Map(),
   cooldowns = new Map();
-const hash = (key) => createHash('sha256').update(key).digest('hex');
 export async function cached(key, ttl, fetcher) {
   const failed = cooldowns.get(key);
   if (failed && failed.until > Date.now()) return failed.result;
   if (pending.has(key)) return pending.get(key);
   const task = (async () => {
-    let prior = memory.get(key);
-    if (!prior) {
-      try {
-        prior = JSON.parse(await readFile(resolve(cacheDir, hash(key) + '.json'), 'utf8'));
-        memory.set(key, prior);
-      } catch {}
-    }
+    const prior = memory.get(key);
     if (prior && Date.now() - prior.fetchedAt < ttl) return { ...prior, status: 'ok' };
     try {
       const value = await fetcher();
       const record = { value, fetchedAt: Date.now() };
       memory.set(key, record);
-      try {
-        await mkdir(cacheDir, { recursive: true });
-        const file = resolve(cacheDir, hash(key) + '.json');
-        await writeFile(file + '.tmp', JSON.stringify(record));
-        await rename(file + '.tmp', file);
-      } catch {}
       return { ...record, status: 'ok' };
     } catch (e) {
       return prior
@@ -224,24 +207,8 @@ async function alerts(spot) {
     },
   );
 }
-export function resolveSpot(id, state) {
-  const preset = presets.find((s) => s.id === id);
-  if (preset) return preset;
-  const custom = state.spots.find((s) => s.id === id);
-  if (!custom) return null;
-  const ref =
-    presets.find((s) => s.id === custom.referenceId) ||
-    presets.reduce((a, b) => (distanceMiles(custom, a) < distanceMiles(custom, b) ? a : b));
-  return {
-    ...custom,
-    tideStation: ref.tideStation,
-    currentStation: ref.currentStation,
-    marine: custom.exposure === 'Open coast' ? [custom.lon, custom.lat] : null,
-    bearing: null,
-    source: null,
-    access: 'Personal pin',
-    referenceName: ref.name,
-  };
+export function resolveSpot(id) {
+  return presets.find((s) => s.id === id) ?? null;
 }
 export async function details(spot) {
   const [w, t, h, c, m, o, wl, wt, a] = await Promise.all([
