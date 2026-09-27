@@ -4,14 +4,14 @@ Status: proposal only. This document does not authorize or provision a deploymen
 
 ## Decision
 
-Publish the forecast atlas as a static site backed by a small edge API. Keep journals, custom pins, preferences, and backups in the user's browser for the first public release. Continue shipping the current loopback Node application for local use and migration.
+Publish the forecast atlas as a static site backed by a small edge API. Exclude journals, custom pins, accounts, and backup/import from the first public release. Keep small preferences such as the wind-comfort limit in browser `localStorage`. Continue shipping the current loopback Node application and its personal features for local use.
 
 The recommended first host is Cloudflare Pages plus a Worker:
 
 - Pages serves the existing HTML, CSS, fonts, and map data.
 - The Worker exposes read-only forecast endpoints, validates every parameter, combines provider responses, and applies shared caching and request limits.
-- The browser stores private records in IndexedDB through a storage adapter. Export and import stay entirely on the device.
-- The public Worker has no journal, state, or export endpoint and no database containing personal fishing locations.
+- The browser stores only small preferences in `localStorage`; there is no public personal-record store.
+- The public Worker has no journal, state, pin, import, or export endpoint and no database containing personal fishing locations.
 
 This keeps the initial public system small and prevents the current `data/state.json` from becoming shared web state. It also avoids adding accounts before there is a clear need for cross-device sync. A later sync feature would require authentication, per-user authorization, encryption and retention decisions, and a separate threat review.
 
@@ -20,21 +20,22 @@ This keeps the initial public system small and prevents the current `data/state.
 | Capability | Local application | Public application |
 | --- | --- | --- |
 | Preset atlas and forecast browsing | Current Node server | Static site plus read-only edge API |
-| Journal and preferences | `data/state.json` with backup | Device-local IndexedDB |
-| Custom pins | Local state; server resolves forecast | Device-local; public API support deferred until coordinate privacy and abuse controls are complete |
-| Backup | `/api/export` downloads local state | Browser-generated export/import |
+| Journal | `data/state.json` with backup | Excluded |
+| Preferences | `data/state.json` with backup | Browser `localStorage` |
+| Custom pins | Local state; server resolves forecast | Excluded |
+| Backup | `/api/export` downloads local state | Excluded |
 | Accounts and cross-device sync | None | None in the first release |
 
-The repository should expose storage and forecast interfaces so both runtimes use the same UI and domain logic:
+The repository should expose a forecast interface so both runtimes use the same UI and domain logic:
 
 ```text
 UI and domain logic
 ├── Forecast source
 │   ├── Local HTTP adapter → current Node server
 │   └── Public HTTP adapter → read-only Worker
-└── Personal storage
+└── Preferences
     ├── Local HTTP adapter → state.json
-    └── Browser adapter → IndexedDB
+    └── Public browser adapter → localStorage
 ```
 
 The public build must never contain a fallback URL for `/api/state` or `/api/export`. Deploy validation should fail if either route is present in the Worker route table.
@@ -78,14 +79,14 @@ Recheck these pages immediately before launch and record the date and result in 
 
 The first public version needs a short privacy page that says:
 
-- journals, pins, and preferences remain in this browser and are not synced;
-- clearing site data removes them unless the user exported a backup;
+- wind comfort and other small preferences remain in this browser and are not synced;
+- clearing site data resets those preferences;
 - forecast requests reveal the selected preset region to the hosting provider and upstream data providers;
 - no advertising or behavioral analytics are enabled for the initial release;
 - operational logs exclude journals, custom pin coordinates, request query strings, and response bodies;
 - forecasts, tide estimates, current references, and session suggestions are planning aids rather than safety or catch predictions.
 
-Migration from the local application should be explicit: export a backup locally, open the public app, preview the records to import, then confirm. Import must validate the same bounds and field limits as the local server, preserve unknown future fields in the original backup file, and never upload the backup to the Worker.
+The public edition does not import local journals or custom pins. Local backups remain usable only by the local edition unless a later product decision adds a reviewed migration path.
 
 ## Security and operations
 
@@ -111,7 +112,7 @@ Use a private preview URL before production. Record results for:
 - screen-reader announcements for changing location and forecast status;
 - laptop and large desktop viewports, then phone widths at 320, 375, and 430 CSS pixels;
 - English and non-English browser preferences, confirming the Dutch name remains `lang="nl"` and `translate="no"` while the document stays English;
-- IndexedDB upgrade, quota failure, private browsing behavior, export/import round trips, corrupted imports, and clearing site data;
+- localStorage failure, private browsing behavior, and clearing site data;
 - cache-hit load, cold-cache load, rate limiting, provider timeouts, stale fallback, and rollback;
 - the absence of `/api/state`, `/api/export`, journal content, pins, and provider secrets in public responses and logs.
 
@@ -119,11 +120,9 @@ Do not describe mobile as supported until the phone checks pass. Until then, lab
 
 ## Rollout
 
-1. **Adapter refactor:** isolate forecast and personal-storage interfaces without changing the local UI. Add contract tests that run against both local and browser storage adapters.
-2. **Read-only preview:** deploy static assets and preset-only forecast endpoints behind preview access. Keep personal features disabled until browser storage and backup tests pass.
-3. **Device-local personal features:** enable preferences, journal, custom pins without custom-coordinate forecasts, plus import/export and privacy copy.
-4. **Custom-coordinate review:** decide whether its user value justifies the additional privacy, provider, caching, and abuse surface. Implement only after that decision is recorded.
-5. **Public launch:** remove preview access after provider terms, budgets, accessibility, mobile scope, monitoring, and rollback are signed off in a release issue.
-6. **Post-launch review:** inspect aggregate provider and error metrics after 24 hours, seven days, and 30 days. Reduce traffic or disable a provider when limits or terms require it.
+1. **Adapter refactor:** isolate the forecast interface and public preference storage without changing the local UI. Add contract tests for both forecast adapters.
+2. **Read-only preview:** deploy static assets and preset-only forecast endpoints behind preview access. Enable only browser-local preferences.
+3. **Public launch:** remove preview access after provider terms, budgets, accessibility, mobile scope, monitoring, and rollback are signed off in a release issue.
+4. **Post-launch review:** inspect aggregate provider and error metrics after 24 hours, seven days, and 30 days. Reduce traffic or disable a provider when limits or terms require it.
 
 Success for the first release means forecast browsing works without access to anyone's personal records, the local application and backups continue to work, provider usage stays within an explicitly approved tier, and every unavailable or estimated condition remains clear to the user.
