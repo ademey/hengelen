@@ -5,16 +5,28 @@ import { resolve, extname } from 'node:path';
 import { overview, details, resolveSpot } from './forecast.mjs';
 const root = resolve(import.meta.dirname, 'dist');
 const port = Number(process.env.PORT || 4317),
+  // Match the Host header without any port: browsers and proxies send
+  // `Host: name:port` for non-default ports, so matching the raw header
+  // would 403 operators who configured only the hostname.
+  hostOnly = (host) => {
+    if (!host) return '';
+    if (host.startsWith('[')) {
+      const end = host.indexOf(']');
+      return end === -1 ? host : host.slice(0, end + 1);
+    }
+    const colon = host.indexOf(':');
+    return colon === -1 ? host : host.slice(0, colon);
+  },
   // Bind loopback by default; set HENGELEN_HOST=0.0.0.0 (or HOST) when hosting
   // behind a platform router.
   bindHost = process.env.HENGELEN_HOST || process.env.HOST || '127.0.0.1',
-  // Comma-separated hostnames the server answers to. Defaults preserve the
-  // previous loopback-only behavior; set HENGELEN_ALLOWED_HOSTS to the public
-  // hostname when hosting.
+  // Comma-separated hostnames the server answers to, without ports.
+  // Defaults preserve the previous loopback-only behavior; set
+  // HENGELEN_ALLOWED_HOSTS to the public hostname when hosting.
   allowedHosts = new Set(
-    (process.env.HENGELEN_ALLOWED_HOSTS || `127.0.0.1:${port},localhost:${port}`)
+    (process.env.HENGELEN_ALLOWED_HOSTS || '127.0.0.1,localhost')
       .split(',')
-      .map((h) => h.trim())
+      .map((h) => h.trim().toLowerCase())
       .filter(Boolean),
   );
 const securityHeaders = {
@@ -47,7 +59,8 @@ function send(res, status, value, headers = {}) {
 }
 const server = http.createServer(async (req, res) => {
   try {
-    if (!allowedHosts.has(req.headers.host)) return send(res, 403, { error: 'Forbidden' });
+    if (!allowedHosts.has(hostOnly((req.headers.host || '').toLowerCase())))
+      return send(res, 403, { error: 'Forbidden' });
     const url = new URL(req.url, 'http://' + req.headers.host),
       path = url.pathname;
     if (path.startsWith('/api/')) {

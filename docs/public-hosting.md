@@ -100,7 +100,7 @@ Before public preview:
 6. Add error-budget alerts for elevated `unavailable`, `stale`, `429`, and `5xx` rates. Do not alert on individual user activity.
 7. Pin deployment tooling, require reviewed pull requests, and keep an immediate rollback to the previous static and Worker versions.
 
-The current Node server remains bound to loopback. Do not expose it directly to the internet: its host/origin checks, shared filesystem state, and process-local write queue were designed for one local user.
+The Node server now supports direct public hosting: bind it with `HENGELEN_HOST=0.0.0.0` (or `HOST`), list the public hostname in `HENGELEN_ALLOWED_HOSTS` (plain hostnames, no ports — the server strips any port from the request's `Host` header before matching), and set `HENGELEN_HSTS=1` when serving behind HTTPS. It keeps no filesystem state and serves a read-only API, with a host allowlist and security headers on every response.
 
 ## Preview validation
 
