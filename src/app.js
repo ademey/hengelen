@@ -13,6 +13,11 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
+
+// Kiosk mode for the 1024x600 Raspberry Pi touchscreen (?kiosk=1).
+// Sets body[data-kiosk='1'] before the first render so all kiosk CSS applies.
+const KIOSK = new URLSearchParams(location.search).get('kiosk') === '1';
+if (KIOSK) document.body.dataset.kiosk = '1';
 let spots = [...presets],
   selected = null,
   hour = 0,
@@ -931,6 +936,25 @@ function renderConditionsChart() {
     if (point.x < 44 || point.x > width - 12 || !rows.length) return;
     jumpTo(rows[0].time + ((point.x - 44) / (width - 56)) * rows.length * 3600);
   };
+  if (KIOSK) {
+    // Kiosk touch: drag across the chart to scrub the selected hour.
+    // Same x-to-hour math as the tap handler above; taps keep working via onclick.
+    const scrubPointer = (e) => {
+      const svg = host.querySelector('svg');
+      if (!svg) return;
+      const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse()),
+        rows = dayRows(weather?.hours);
+      if (point.x < 44 || point.x > width - 12 || !rows.length) return;
+      jumpTo(rows[0].time + ((point.x - 44) / (width - 56)) * rows.length * 3600);
+    };
+    host.onpointerdown = (e) => {
+      host.setPointerCapture(e.pointerId);
+      scrubPointer(e);
+    };
+    host.onpointermove = (e) => {
+      if (e.buttons) scrubPointer(e);
+    };
+  }
   $('#timeline-source').textContent =
     `Tides: ${detail?.spot.tideStation?.name ?? 'loading reference'} · Currents: ${detail?.spot.currentStation?.name ?? 'no assigned reference'}. Tide height does not indicate current speed.`;
   renderComparison();

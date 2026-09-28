@@ -2617,3 +2617,74 @@ body[data-page='atlas'] .map-key span:not(:first-child) {
     padding-block: 5px;
   }
 }
+
+/* Kiosk mode (?kiosk=1) — 1024x600 Raspberry Pi touchscreen.
+   Every rule below is scoped under body[data-kiosk='1']; desktop and mobile
+   rendering is unchanged when kiosk mode is off. */
+body[data-kiosk='1'] {
+  overscroll-behavior-y: none;
+}
+/* Kiosk header: keep the tabs and the demo banner, drop the meta column and edition badge. */
+body[data-kiosk='1'] .header-meta,
+body[data-kiosk='1'] .local {
+  display: none;
+}
+/* Detail page: PLAN YOUR SESSION (day buttons, tide chart, hour slider, sessions) first. */
+body[data-kiosk='1'] #location-view:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+body[data-kiosk='1'] #location-view .detail-nav {
+  order: -2;
+}
+body[data-kiosk='1'] #location-view .detail-planning {
+  order: -1;
+}
+body[data-kiosk='1'] #detail-map-slot {
+  display: none;
+}
+/* Chart readability on the 7" screen. */
+body[data-kiosk='1'] .conditions-chart-svg text {
+  font-size: 11.5px;
+}
+body[data-kiosk='1'] #conditions-chart {
+  min-height: 320px;
+  touch-action: pan-y;
+}
+/* No text selection while dragging on touch surfaces. */
+body[data-kiosk='1'] #map,
+body[data-kiosk='1'] #conditions-chart,
+body[data-kiosk='1'] .days,
+body[data-kiosk='1'] #spot-list,
+body[data-kiosk='1'] .detail-nav {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Touch targets >= 44px. */
+body[data-kiosk='1'] .map-controls button {
+  width: 44px;
+  height: 44px;
+}
+body[data-kiosk='1'] .spot-row {
+  min-height: 44px;
+}
+body[data-kiosk='1'] .days button {
+  min-height: 44px;
+}
+body[data-kiosk='1'] #detail-location,
+body[data-kiosk='1'] #back-atlas,
+body[data-kiosk='1'] #refresh,
+body[data-kiosk='1'] #now,
+body[data-kiosk='1'] #compare-spots {
+  min-height: 44px;
+}
+body[data-kiosk='1'] #hour::-webkit-slider-thumb,
+body[data-kiosk='1'] #wind-limit::-webkit-slider-thumb {
+  width: 44px;
+  height: 44px;
+}
+body[data-kiosk='1'] #hour::-moz-range-thumb,
+body[data-kiosk='1'] #wind-limit::-moz-range-thumb {
+  width: 44px;
+  height: 44px;
+}
