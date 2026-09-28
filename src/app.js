@@ -1,12 +1,8 @@
 import { fishingWindows, distinctWindows } from './planner.js';
 import { conditionsTimeline } from './timeline.js';
 import { presets } from './spots.js';
-import {
-  atTime,
-  displayTideAt,
-  directionName,
-  distanceMiles,
-} from './domain.js';
+import { kioskEnabled, kioskHomeHref, scrubEngaged } from './kiosk.js';
+import { atTime, displayTideAt, directionName, distanceMiles } from './domain.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? '').replace(
@@ -16,8 +12,13 @@ const esc = (s) =>
 
 // Kiosk mode for the 1024x600 Raspberry Pi touchscreen (?kiosk=1).
 // Sets body[data-kiosk='1'] before the first render so all kiosk CSS applies.
-const KIOSK = new URLSearchParams(location.search).get('kiosk') === '1';
-if (KIOSK) document.body.dataset.kiosk = '1';
+const KIOSK = kioskEnabled(location.search);
+if (KIOSK) {
+  document.body.dataset.kiosk = '1';
+  // Keep ?kiosk=1 when the brand link goes home, so a tap doesn't silently
+  // exit the touchscreen layout.
+  document.querySelector('a.brand')?.setAttribute('href', kioskHomeHref());
+}
 let spots = [...presets],
   selected = null,
   hour = 0,
@@ -790,11 +791,7 @@ function applyRoute() {
     id = route.startsWith('spot/') ? decodeURIComponent(route.slice(5)) : null;
   } catch {}
   const next =
-    route === 'settings'
-      ? 'settings'
-      : id && spots.some((s) => s.id === id)
-        ? 'location'
-        : 'atlas';
+    route === 'settings' ? 'settings' : id && spots.some((s) => s.id === id) ? 'location' : 'atlas';
   const changed = next !== currentPage || (next === 'location' && id !== selected);
   if (next === 'location') {
     if (!atlasCamera) atlasCamera = { zoom, panX, panY };
@@ -937,23 +934,42 @@ function renderConditionsChart() {
     jumpTo(rows[0].time + ((point.x - 44) / (width - 56)) * rows.length * 3600);
   };
   if (KIOSK) {
-    // Kiosk touch: drag across the chart to scrub the selected hour.
+    // Kiosk touch: drag horizontally across the chart to scrub the selected hour.
     // Same x-to-hour math as the tap handler above; taps keep working via onclick.
+    // Scrubbing engages only after enough horizontal travel (see kiosk.js), so a
+    // vertical swipe that starts on the chart scrolls the page instead of
+    // changing the hour.
     const scrubPointer = (e) => {
       const svg = host.querySelector('svg');
       if (!svg) return;
-      const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse()),
+      const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(
+          svg.getScreenCTM().inverse(),
+        ),
         rows = dayRows(weather?.hours);
       if (point.x < 44 || point.x > width - 12 || !rows.length) return;
       jumpTo(rows[0].time + ((point.x - 44) / (width - 56)) * rows.length * 3600);
     };
+    let scrubStartX = null,
+      scrubbing = false;
     host.onpointerdown = (e) => {
       host.setPointerCapture(e.pointerId);
-      scrubPointer(e);
+      scrubStartX = e.clientX;
+      scrubbing = false;
     };
     host.onpointermove = (e) => {
-      if (e.buttons) scrubPointer(e);
+      if (scrubStartX === null || !e.buttons) return;
+      if (!scrubbing) {
+        if (!scrubEngaged(scrubStartX, e.clientX)) return;
+        scrubbing = true;
+      }
+      scrubPointer(e);
     };
+    const endScrub = () => {
+      scrubStartX = null;
+      scrubbing = false;
+    };
+    host.onpointerup = endScrub;
+    host.onpointercancel = endScrub;
   }
   $('#timeline-source').textContent =
     `Tides: ${detail?.spot.tideStation?.name ?? 'loading reference'} · Currents: ${detail?.spot.currentStation?.name ?? 'no assigned reference'}. Tide height does not indicate current speed.`;
