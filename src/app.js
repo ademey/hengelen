@@ -3,13 +3,9 @@ import { conditionsTimeline } from './timeline.js';
 import { presets } from './spots.js';
 import {
   atTime,
-  tideAt,
   displayTideAt,
-  windWindows,
   directionName,
   distanceMiles,
-  forecastTimeFor,
-  observationSummary,
 } from './domain.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -17,17 +13,7 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
-const read = (key, fallback) => {
-  try {
-    return JSON.parse(localStorage.getItem(key)) ?? fallback;
-  } catch {
-    return fallback;
-  }
-};
-let local = { revision: 0, spots: [], entries: [], prefs: { windLimit: 10 } },
-  custom = [],
-  entries = [],
-  spots = [...presets],
+let spots = [...presets],
   selected = null,
   hour = 0,
   limit = 10,
@@ -36,21 +22,13 @@ let local = { revision: 0, spots: [], entries: [], prefs: { windLimit: 10 } },
   panY = 0,
   dragged = false,
   mapDetail = null,
-  adding = false,
-  pending = null,
-  coasts = [],
-  stateReady = false,
-  savePending = false,
-  editingPin = null,
-  editingTrip = null;
+  coasts = [];
 let showSources = true,
   focusedSource = null;
 let comparisonOpen = false,
   comparisonLoading = false;
 let currentPage = 'atlas',
   atlasCamera = null;
-let tripSnapshotPrefix = null,
-  tripDraftVersion = 0;
 const mapAnnotationSize = 1.3; // Readable markers and labels, independent of map zoom.
 let forecastTimes = [],
   weatherById = {},
@@ -77,13 +55,6 @@ const clock = (t) =>
     timeZone: 'America/Los_Angeles',
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(t * 1000));
-const inputClock = (t) =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'America/Los_Angeles',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
   }).format(new Date(t * 1000));
 const weekday = (t) =>
   new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short' }).format(
@@ -118,42 +89,6 @@ async function api(path, options) {
   const data = await res.json();
   if (!res.ok) throw Error(data.error || 'Request failed');
   return data;
-}
-function applyLocal(data) {
-  local = data;
-  custom = data.spots;
-  entries = data.entries;
-  spots = [...presets, ...custom];
-  limit = data.prefs.windLimit;
-  $('#wind-limit').value = limit;
-  $('#limit-label').value = limit;
-}
-async function persist(next) {
-  if (!stateReady) {
-    notice('Local files are unavailable. Retry loading before saving.');
-    return false;
-  }
-  if (savePending) {
-    notice('A save is still finishing. Try again in a moment.');
-    return false;
-  }
-  savePending = true;
-  try {
-    const data = await api('/api/state', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...next, revision: local.revision }),
-    });
-    applyLocal(data);
-    notice('Saved to your local files');
-    return true;
-  } catch (e) {
-    notice(e.message);
-    alert(e.message);
-    return false;
-  } finally {
-    savePending = false;
-  }
 }
 function days() {
   const seen = new Set();
@@ -238,8 +173,7 @@ const path = (poly) =>
 function selectedSources() {
   const spot = getSpot(),
     detail = detailsById[spot.id];
-  const reference =
-    detail?.spot ?? (spot.tideStation ? spot : presets.find((p) => p.id === spot.referenceId));
+  const reference = detail?.spot ?? spot;
   const sources = [];
   if (reference?.tideStation) {
     const t = reference.tideStation;
@@ -437,7 +371,7 @@ function renderMap() {
     .querySelectorAll('[data-source-marker]')
     .forEach((el) => {
       el.onclick = (e) => {
-        if (adding || dragged) return;
+        if (dragged) return;
         e.stopPropagation();
         focusSource(el.dataset.sourceMarker);
       };
@@ -454,7 +388,7 @@ function renderMap() {
       const choose = () =>
         currentPage === 'atlas' ? previewSpot(el.dataset.mapSpot) : selectSpot(el.dataset.mapSpot);
       el.onclick = (e) => {
-        if (adding || dragged) return;
+        if (dragged) return;
         e.stopPropagation();
         choose();
       };
@@ -490,7 +424,7 @@ function renderMapPreview() {
     : detail
       ? 'Tide unavailable'
       : 'Loading tide reference…';
-  host.innerHTML = `<span class="eyebrow">${esc(s.exposure.toUpperCase())}</span><h3>${esc(s.name)}</h3><p>${esc(s.access ?? 'Personal pin')}</p><dl><div><dt>${esc(dayTitle(timestamp()))} · ${esc(clock(timestamp()))} PT</dt><dd>${esc(wind)}${weatherState === 'stale' ? ' · cached' : ''}</dd></div><div><dt>TIDE · MLLW</dt><dd>${esc(tideText)}</dd></div></dl><button id="open-map-selection" class="primary">Open location details →</button>`;
+  host.innerHTML = `<span class="eyebrow">${esc(s.exposure.toUpperCase())}</span><h3>${esc(s.name)}</h3><p>${esc(s.access)}</p><dl><div><dt>${esc(dayTitle(timestamp()))} · ${esc(clock(timestamp()))} PT</dt><dd>${esc(wind)}${weatherState === 'stale' ? ' · cached' : ''}</dd></div><div><dt>TIDE · MLLW</dt><dd>${esc(tideText)}</dd></div></dl><button id="open-map-selection" class="primary">Open location details →</button>`;
   host.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => host.classList.add('visible'));
   $('#open-map-selection').onclick = () => selectSpot(s.id);
@@ -586,26 +520,6 @@ function sourceLine(label, resource, url) {
   const state = resource?.status;
   return `<div class="source-row"><a href="${url}" target="_blank" rel="noreferrer">${label} ↗</a><span>${state === 'stale' ? 'CACHED · refresh failed' : state === 'unavailable' ? 'UNAVAILABLE' : state === 'events-only' ? 'EVENTS ONLY' : state === 'not-applicable' ? 'NOT USED' : resource?.fetchedAt ? 'Retrieved ' + clock(resource.fetchedAt / 1000) + ' PT' : 'Loading…'}</span></div>`;
 }
-function observationTags(o = {}) {
-  return [
-    [o.comfort && `Casting ${o.comfort.replaceAll('-', ' ')}`],
-    [Number.isFinite(o.actualWind) && `Wind ${fmt(o.actualWind, 0)} kn`],
-    [o.clarity && `${o.clarity} water`],
-    [o.bait && `Bait ${o.bait}`],
-    [
-      Number.isFinite(o.encounters) &&
-        `${o.encounters} fish encounter${o.encounters === 1 ? '' : 's'}`,
-    ],
-  ]
-    .flat()
-    .filter(Boolean)
-    .map((value) => `<span>${esc(value)}</span>`)
-    .join('');
-}
-function journalHistory(spot) {
-  const summary = observationSummary(entries, spot.name);
-  return `<details><summary>Past trips · ${summary.trips} logged / ${summary.observed} with observations</summary><p>These records are shown for comparison only. They do not change session rankings.</p>${summary.averageWind === null ? '' : `<p>Average recorded wind: ${fmt(summary.averageWind, 1)} kn across trips that include actual wind.</p>`}<div class="history-list">${summary.recent.map((entry) => `<article><small>${esc(entry.date)}${entry.time ? ' · ' + esc(entry.time) : ''}</small><div class="observation-summary">${observationTags(entry.observations)}</div><p>${esc(entry.catch || 'No encounter summary')}</p></article>`).join('')}</div></details>`;
-}
 function renderInspector() {
   const s = getSpot(),
     data = detailsById[s.id],
@@ -644,13 +558,10 @@ function renderInspector() {
   const alerts = data?.alerts.value ?? [];
   const activeAlerts = alerts.filter((a) => !a.expires || Date.parse(a.expires) > Date.now());
   $('#inspector').innerHTML =
-    `<div class="spot-title"><span class="eyebrow">${esc(s.exposure.toUpperCase())}</span><span class="spot-number">${String(idx).padStart(2, '0')}</span></div><h2>${esc(s.name)}</h2><div class="location-sub">${s.lat.toFixed(3)}° N / ${Math.abs(s.lon).toFixed(3)}° W · ${esc(s.access ?? 'Personal pin')}</div>${data?.alerts.status === 'unavailable' || data?.alerts.status === 'stale' ? '<p class="data-caution">Latest alert check unavailable. Check NWS before heading out.</p>' : ''}${activeAlerts.map((a) => `<details class="weather-alert"><summary>${esc(a.event)}</summary><p>${esc(a.headline)}</p><p>${esc(a.instruction || a.description)}</p><small>Expires ${a.expires ? shortDate(Date.parse(a.expires) / 1000) + ' ' + clock(Date.parse(a.expires) / 1000) : 'when cancelled'} · NWS</small></details>`).join('')}<div class="assessment"><strong><span class="status-symbol">${known && c.wind <= limit ? '◒' : '↗'}</span>${title}</strong><p>${esc(explanation)}</p></div><div class="metrics"><div class="metric"><span class="eyebrow">FORECAST WIND · ${directionName(c.direction)}</span><div class="value">${fmt(c.wind, 0)}<span> kn</span></div><small>Gusting ${fmt(c.gust, 0)} kn</small><a class="metric-link" href="${atmoWindUrl(s, t)}" target="_blank" rel="noreferrer" aria-label="Open detailed Atmo wind map for ${esc(s.name)} at ${esc(dayTitle(t))}, ${esc(clock(t))}">Detailed wind map · Atmo ↗</a></div><div class="metric"><span class="eyebrow">${tide?.estimated ? 'ESTIMATED TIDE' : 'PREDICTED TIDE'}</span><div class="value">${tide?.estimated ? '≈ ' : ''}${fmt(tide?.value)}<span> ft ${tide ? (tide.rising ? '↗' : '↘') : ''}</span></div><small>${tide ? (tide.rising ? 'Rising' : 'Falling') + ' · MLLW' + (tide.estimated ? ' · interpolated' : '') : data?.tides.status === 'events-only' ? 'High/low events below' : 'Unavailable'}</small></div><div class="metric"><span class="eyebrow">${s.exposure === 'Bay shoreline' ? 'NEXT CURRENT EVENT' : 'OFFSHORE SWELL'}</span><div class="value ${s.exposure === 'Bay shoreline' ? 'event-value' : ''}">${s.exposure === 'Bay shoreline' ? esc(nextCurrent?.type ?? '—') : fmt(marine?.swell)}<span>${s.exposure === 'Bay shoreline' ? '' : ' ft'}</span></div><small>${s.exposure === 'Bay shoreline' ? (nextCurrent ? clock(nextCurrent.time) + ' · regional reference' : 'No local reference available') : `${fmt(marine?.period, 0)} sec · ${directionName(marine?.direction)}`}</small></div><div class="metric"><span class="eyebrow">RAIN CHANCE</span><div class="value">${fmt(c.rain, 0)}<span> %</span></div><small>Air ${fmt(c.temp, 0)} °F · forecast</small></div></div><div class="chart-section"><div class="chart-head"><span>NEXT HIGH / LOW TIDES</span><span>NOAA · FEET / MLLW</span></div><div class="station-caption">${data?.highLow.status === 'stale' || data?.tides.status === 'stale' ? 'Cached predictions · refresh unavailable. ' : ''}${station ? `${esc(station.name)} · ${distanceMiles(s, station).toFixed(1)} mi from pin` : 'Loading tide reference…'}</div><div class="event-list">${tideEvents.map((e) => `<div><span>${pacificDate(e.time) !== pacificDate(t) ? shortDate(e.time) + ' ' : ''}${clock(e.time)}</span><b>${e.type === 'H' ? 'High' : 'Low'}</b><span>${fmt(e.value)} ft</span></div>`).join('')}</div></div><div class="window"><span class="eyebrow">SESSIONS TO CONSIDER · ${esc(dayTitle(timestamp()))}</span>${windowCards(windows)}<details class="planning-method"><summary>How these are chosen</summary><p>Two-hour sessions within daylight and your wind/gust limits. Starting preferences favor early or late daylight, changing tide height (either direction), and smaller offshore swell. Current events provide context; stronger current is not rewarded. Missing data makes a session provisional. These are planning suggestions, not catch probabilities or a wading-safety assessment.</p></details></div><details><summary>Currents: flood, ebb & slack</summary><p>${curStation ? `${esc(curStation.name)} · ${distanceMiles(s, curStation).toFixed(1)} mi from pin. Prediction depth ${fmt(currentEvents[0]?.depth ?? curStation.depth, 0)} ft. These are events at the reference station, not current speed at your feet.` : 'No suitable current reference is assigned to this spot.'}</p><div class="event-list">${currentEvents.map((e) => `<div><span>${shortDate(e.time)} ${clock(e.time)}</span><b>${esc(e.type)}</b><span>${e.type === 'slack' ? '—' : fmt(Math.abs(e.speed)) + ' kn'}</span></div>`).join('')}</div><p>High/low tide and slack current have different timing. Flood moves into the bay; ebb moves out. No current curve is inferred from these events.</p></details><details><summary>Observed now · Golden Gate reference</summary><p>${obs ? `${obsOld ? 'Older reading — ' : ''}${fmt(obs.wind)} kn from ${directionName(obs.direction)}, gusting ${fmt(obs.gust)} kn. Observed ${shortDate(obs.time)}, ${clock(obs.time)} PT.` : 'Wind observations are unavailable.'}</p><p>Torpedo Wharf is ${distanceMiles(s, { lat: 37.8063, lon: -122.4659 }).toFixed(1)} mi from this pin. This observation is regional context; it does not replace the spot forecast.</p><p>Water temperature: ${temp && Number.isFinite(temp.value) ? fmt(temp.value) + ' °F · ' + shortDate(temp.time) + ' ' + clock(temp.time) + ' PT' : 'unavailable at this station'}. ${data?.observedWaterLevel.value ? `Observed water level: ${fmt(data.observedWaterLevel.value.value)} ft MLLW · ${clock(data.observedWaterLevel.value.time)} PT.` : ''}</p></details><details><summary>Shore notes</summary><p>${esc(s.notes || 'Your personal spot. Add shore-access and casting notes as you learn it.')}</p>${s.source ? `<a href="${s.source}" target="_blank" rel="noreferrer">${esc(s.sourceLabel)} ↗</a><p class="review-date">Access notes reviewed ${s.reviewed}. Check the source for closures and current restrictions.</p>` : ''}<a href="https://www.nps.gov/goga/planyourvisit/fishing.htm" target="_blank" rel="noreferrer">Fishing rules & license information ↗</a></details><details><summary>Data sources & freshness</summary>${sourceLine('Wind, gusts, rain · Open-Meteo', data?.weather ?? weatherMeta[s.id], 'https://open-meteo.com/')}${sourceLine('Tides · NOAA', data?.highLow, station ? `https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=${station.id}` : 'https://tidesandcurrents.noaa.gov/')}${curStation ? sourceLine('Current events · NOAA', data?.currents, `https://tidesandcurrents.noaa.gov/noaacurrents/predictions.html?id=${curStation.id}_${curStation.bin}`) : ''}${s.exposure !== 'Bay shoreline' ? sourceLine('Offshore waves · Open-Meteo / DWD', data?.marine, 'https://open-meteo.com/en/docs/marine-weather-api') : ''}${sourceLine('Active alerts · NWS', data?.alerts, `https://forecast.weather.gov/MapClick.php?lat=${s.lat}&lon=${s.lon}`)}<p>${data?.alerts.status === 'unavailable' ? 'Alerts could not be checked.' : activeAlerts.length ? 'See active alerts above.' : data?.alerts.value ? 'No active alerts returned for this point.' : 'Checking alerts…'} Alerts apply now; they do not certify future conditions.</p><p>Weather grid ${weatherById[s.id] ? `${weatherById[s.id].grid.lat.toFixed(3)}, ${weatherById[s.id].grid.lon.toFixed(3)}` : 'unavailable'}. ${data?.spot.referenceName ? 'Tide/current reference area: ' + esc(data.spot.referenceName) + '. ' : ''}Offshore wave heights are not breaking-wave heights at the beach. Forecast skill generally declines farther ahead.</p><p>Open-Meteo weather and marine data: CC BY 4.0; marine attribution to DWD. Coastline: Natural Earth. Terrain: USGS / Mapzen. Roads: © OpenStreetMap contributors. Shoreline shading is decorative, not depth data.</p></details><button class="log-trip" id="log-selected">＋ Log a trip here</button>${custom.some((x) => x.id === selected) ? '<button class="log-trip" id="edit-pin">Edit this pin</button>' : ''}`;
-  $('#inspector').insertAdjacentHTML('beforeend', journalHistory(s));
-  $('#log-selected').onclick = () => openTrip();
+    `<div class="spot-title"><span class="eyebrow">${esc(s.exposure.toUpperCase())}</span><span class="spot-number">${String(idx).padStart(2, '0')}</span></div><h2>${esc(s.name)}</h2><div class="location-sub">${s.lat.toFixed(3)}° N / ${Math.abs(s.lon).toFixed(3)}° W · ${esc(s.access)}</div>${data?.alerts.status === 'unavailable' || data?.alerts.status === 'stale' ? '<p class="data-caution">Latest alert check unavailable. Check NWS before heading out.</p>' : ''}${activeAlerts.map((a) => `<details class="weather-alert"><summary>${esc(a.event)}</summary><p>${esc(a.headline)}</p><p>${esc(a.instruction || a.description)}</p><small>Expires ${a.expires ? shortDate(Date.parse(a.expires) / 1000) + ' ' + clock(Date.parse(a.expires) / 1000) : 'when cancelled'} · NWS</small></details>`).join('')}<div class="assessment"><strong><span class="status-symbol">${known && c.wind <= limit ? '◒' : '↗'}</span>${title}</strong><p>${esc(explanation)}</p></div><div class="metrics"><div class="metric"><span class="eyebrow">FORECAST WIND · ${directionName(c.direction)}</span><div class="value">${fmt(c.wind, 0)}<span> kn</span></div><small>Gusting ${fmt(c.gust, 0)} kn</small><a class="metric-link" href="${atmoWindUrl(s, t)}" target="_blank" rel="noreferrer" aria-label="Open detailed Atmo wind map for ${esc(s.name)} at ${esc(dayTitle(t))}, ${esc(clock(t))}">Detailed wind map · Atmo ↗</a></div><div class="metric"><span class="eyebrow">${tide?.estimated ? 'ESTIMATED TIDE' : 'PREDICTED TIDE'}</span><div class="value">${tide?.estimated ? '≈ ' : ''}${fmt(tide?.value)}<span> ft ${tide ? (tide.rising ? '↗' : '↘') : ''}</span></div><small>${tide ? (tide.rising ? 'Rising' : 'Falling') + ' · MLLW' + (tide.estimated ? ' · interpolated' : '') : data?.tides.status === 'events-only' ? 'High/low events below' : 'Unavailable'}</small></div><div class="metric"><span class="eyebrow">${s.exposure === 'Bay shoreline' ? 'NEXT CURRENT EVENT' : 'OFFSHORE SWELL'}</span><div class="value ${s.exposure === 'Bay shoreline' ? 'event-value' : ''}">${s.exposure === 'Bay shoreline' ? esc(nextCurrent?.type ?? '—') : fmt(marine?.swell)}<span>${s.exposure === 'Bay shoreline' ? '' : ' ft'}</span></div><small>${s.exposure === 'Bay shoreline' ? (nextCurrent ? clock(nextCurrent.time) + ' · regional reference' : 'No local reference available') : `${fmt(marine?.period, 0)} sec · ${directionName(marine?.direction)}`}</small></div><div class="metric"><span class="eyebrow">RAIN CHANCE</span><div class="value">${fmt(c.rain, 0)}<span> %</span></div><small>Air ${fmt(c.temp, 0)} °F · forecast</small></div></div><div class="chart-section"><div class="chart-head"><span>NEXT HIGH / LOW TIDES</span><span>NOAA · FEET / MLLW</span></div><div class="station-caption">${data?.highLow.status === 'stale' || data?.tides.status === 'stale' ? 'Cached predictions · refresh unavailable. ' : ''}${station ? `${esc(station.name)} · ${distanceMiles(s, station).toFixed(1)} mi from pin` : 'Loading tide reference…'}</div><div class="event-list">${tideEvents.map((e) => `<div><span>${pacificDate(e.time) !== pacificDate(t) ? shortDate(e.time) + ' ' : ''}${clock(e.time)}</span><b>${e.type === 'H' ? 'High' : 'Low'}</b><span>${fmt(e.value)} ft</span></div>`).join('')}</div></div><div class="window"><span class="eyebrow">SESSIONS TO CONSIDER · ${esc(dayTitle(timestamp()))}</span>${windowCards(windows)}<details class="planning-method"><summary>How these are chosen</summary><p>Two-hour sessions within daylight and your wind/gust limits. Starting preferences favor early or late daylight, changing tide height (either direction), and smaller offshore swell. Current events provide context; stronger current is not rewarded. Missing data makes a session provisional. These are planning suggestions, not catch probabilities or a wading-safety assessment.</p></details></div><details><summary>Currents: flood, ebb & slack</summary><p>${curStation ? `${esc(curStation.name)} · ${distanceMiles(s, curStation).toFixed(1)} mi from pin. Prediction depth ${fmt(currentEvents[0]?.depth ?? curStation.depth, 0)} ft. These are events at the reference station, not current speed at your feet.` : 'No suitable current reference is assigned to this spot.'}</p><div class="event-list">${currentEvents.map((e) => `<div><span>${shortDate(e.time)} ${clock(e.time)}</span><b>${esc(e.type)}</b><span>${e.type === 'slack' ? '—' : fmt(Math.abs(e.speed)) + ' kn'}</span></div>`).join('')}</div><p>High/low tide and slack current have different timing. Flood moves into the bay; ebb moves out. No current curve is inferred from these events.</p></details><details><summary>Observed now · Golden Gate reference</summary><p>${obs ? `${obsOld ? 'Older reading — ' : ''}${fmt(obs.wind)} kn from ${directionName(obs.direction)}, gusting ${fmt(obs.gust)} kn. Observed ${shortDate(obs.time)}, ${clock(obs.time)} PT.` : 'Wind observations are unavailable.'}</p><p>Torpedo Wharf is ${distanceMiles(s, { lat: 37.8063, lon: -122.4659 }).toFixed(1)} mi from this pin. This observation is regional context; it does not replace the spot forecast.</p><p>Water temperature: ${temp && Number.isFinite(temp.value) ? fmt(temp.value) + ' °F · ' + shortDate(temp.time) + ' ' + clock(temp.time) + ' PT' : 'unavailable at this station'}. ${data?.observedWaterLevel.value ? `Observed water level: ${fmt(data.observedWaterLevel.value.value)} ft MLLW · ${clock(data.observedWaterLevel.value.time)} PT.` : ''}</p></details><details><summary>Shore notes</summary><p>${esc(s.notes || 'Your personal spot. Add shore-access and casting notes as you learn it.')}</p>${s.source ? `<a href="${s.source}" target="_blank" rel="noreferrer">${esc(s.sourceLabel)} ↗</a><p class="review-date">Access notes reviewed ${s.reviewed}. Check the source for closures and current restrictions.</p>` : ''}<a href="https://www.nps.gov/goga/planyourvisit/fishing.htm" target="_blank" rel="noreferrer">Fishing rules & license information ↗</a></details><details><summary>Data sources & freshness</summary>${sourceLine('Wind, gusts, rain · Open-Meteo', data?.weather ?? weatherMeta[s.id], 'https://open-meteo.com/')}${sourceLine('Tides · NOAA', data?.highLow, station ? `https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=${station.id}` : 'https://tidesandcurrents.noaa.gov/')}${curStation ? sourceLine('Current events · NOAA', data?.currents, `https://tidesandcurrents.noaa.gov/noaacurrents/predictions.html?id=${curStation.id}_${curStation.bin}`) : ''}${s.exposure !== 'Bay shoreline' ? sourceLine('Offshore waves · Open-Meteo / DWD', data?.marine, 'https://open-meteo.com/en/docs/marine-weather-api') : ''}${sourceLine('Active alerts · NWS', data?.alerts, `https://forecast.weather.gov/MapClick.php?lat=${s.lat}&lon=${s.lon}`)}<p>${data?.alerts.status === 'unavailable' ? 'Alerts could not be checked.' : activeAlerts.length ? 'See active alerts above.' : data?.alerts.value ? 'No active alerts returned for this point.' : 'Checking alerts…'} Alerts apply now; they do not certify future conditions.</p><p>Weather grid ${weatherById[s.id] ? `${weatherById[s.id].grid.lat.toFixed(3)}, ${weatherById[s.id].grid.lon.toFixed(3)}` : 'unavailable'}. ${data?.spot.referenceName ? 'Tide/current reference area: ' + esc(data.spot.referenceName) + '. ' : ''}Offshore wave heights are not breaking-wave heights at the beach. Forecast skill generally declines farther ahead.</p><p>Open-Meteo weather and marine data: CC BY 4.0; marine attribution to DWD. Coastline: Natural Earth. Terrain: USGS / Mapzen. Roads: © OpenStreetMap contributors. Shoreline shading is decorative, not depth data.</p></details>}`;
   $('#inspector')
     .querySelectorAll('[data-window]')
     .forEach((b) => (b.onclick = () => jumpTo(Number(b.dataset.window))));
-  if ($('#edit-pin')) $('#edit-pin').onclick = () => openPin(getSpot());
 }
 function renderTime() {
   const list = days(),
@@ -769,15 +680,6 @@ $('#wind-limit').oninput = (e) => {
   layoutLocation();
   renderTime();
 };
-$('#wind-limit').onchange = async () => {
-  const old = local.prefs.windLimit;
-  if (!(await persist({ ...local, prefs: { windLimit: limit } }))) {
-    limit = old;
-    $('#wind-limit').value = old;
-    $('#limit-label').value = old;
-  }
-  render();
-};
 function changeZoom(next) {
   const old = zoom;
   zoom = Math.min(3.5, Math.max(0.8, next));
@@ -808,7 +710,7 @@ const mapPoint = (e) =>
   new DOMPoint(e.clientX, e.clientY).matrixTransform($('#map').getScreenCTM().inverse());
 $('#map').addEventListener('pointerdown', (e) => {
   dragged = false;
-  if (adding || e.button !== 0) return;
+  if (e.button !== 0) return;
   const p = mapPoint(e);
   dragStart = { x: p.x, y: p.y, panX, panY };
 });
@@ -846,102 +748,12 @@ $('#map').addEventListener('keydown', (e) => {
     renderMap();
   }
 });
-function pinMode(on) {
-  adding = on;
-  $('#pin-instruction').hidden = !on;
-  $('#map').style.cursor = on ? 'crosshair' : '';
-  $('#add-pin').classList.toggle('selected', on);
-}
-$('#add-pin').onclick = () => {
-  if (!stateReady) {
-    notice('Local data is unavailable. Reload before creating a pin.');
-    return;
-  }
-  pinMode(!adding);
-};
-$('#cancel-pin').onclick = () => pinMode(false);
-function openPin(spot = null) {
-  editingPin = spot?.id ?? null;
-  $('#pin-form').reset();
-  if (spot) {
-    pending = [spot.lon, spot.lat];
-    $('#pin-name').value = spot.name;
-    $('#pin-notes').value = spot.notes;
-    $('#pin-exposure').value = spot.exposure;
-  }
-  let nearest = presets.reduce((a, b) =>
-    distanceMiles({ lat: pending[1], lon: pending[0] }, a) <
-    distanceMiles({ lat: pending[1], lon: pending[0] }, b)
-      ? a
-      : b,
-  );
-  const ref = spot?.referenceId ?? nearest.id;
-  $('#pin-reference').innerHTML = presets
-    .map((s) => `<option value="${s.id}" ${ref === s.id ? 'selected' : ''}>${esc(s.name)}</option>`)
-    .join('');
-  if (!spot)
-    $('#pin-exposure').value =
-      nearest.exposure === 'Bay shoreline' ? 'Bay shoreline' : 'Open coast';
-  $('#pin-coordinates').textContent =
-    `${pending[1].toFixed(4)}° N / ${Math.abs(pending[0]).toFixed(4)}° W`;
-  $('#delete-pin').hidden = !spot;
-  $('#pin-dialog').showModal();
-}
-$('#map').onclick = (e) => {
-  if (dragged) return;
-  if (!adding) {
-    dismissAtlasPreview();
-    return;
-  }
-  const p = mapPoint(e);
-  pending = unproject(
-    (p.x - 400 + 400 * zoom - panX) / zoom,
-    (p.y - 340 + 340 * zoom - panY) / zoom,
-  );
-  if (pending[1] < 37.4 || pending[1] > 38.04 || pending[0] < -122.85 || pending[0] > -122.08) {
-    notice('Choose a point inside the atlas region.');
-    return;
-  }
-  openPin();
-};
-$('#pin-form').onsubmit = async (e) => {
-  e.preventDefault();
-  const name = $('#pin-name').value.trim();
-  if (!name) return;
-  const spot = {
-    id: editingPin ?? crypto.randomUUID(),
-    name,
-    notes: $('#pin-notes').value.trim(),
-    lon: pending[0],
-    lat: pending[1],
-    region: 'YOUR SPOTS',
-    exposure: $('#pin-exposure').value,
-    referenceId: $('#pin-reference').value,
-  };
-  const updated = editingPin ? custom.map((s) => (s.id === spot.id ? spot : s)) : [...custom, spot];
-  if (!(await persist({ ...local, spots: updated }))) return;
-  $('#pin-dialog').close();
-  pinMode(false);
-  delete detailsById[spot.id];
-  selectSpot(spot.id);
-};
-$('#delete-pin').onclick = async () => {
-  if (!confirm('Remove this pin? Its journal entries will remain.')) return;
-  const id = editingPin;
-  if (await persist({ ...local, spots: custom.filter((s) => s.id !== id) })) {
-    $('#pin-dialog').close();
-    selectSpot('crissy');
-  }
-};
-document
-  .querySelectorAll('[data-close]')
-  .forEach((b) => (b.onclick = () => b.closest('dialog').close()));
 function layoutLocation() {
   const spot = getSpot();
   $('#detail-title').textContent = spot.name;
   $('#detail-region').textContent = spot.region + ' / ' + spot.exposure;
   $('#detail-subtitle').textContent =
-    `${spot.lat.toFixed(3)}° N / ${Math.abs(spot.lon).toFixed(3)}° W · ${spot.access ?? 'Personal pin'}`;
+    `${spot.lat.toFixed(3)}° N / ${Math.abs(spot.lon).toFixed(3)}° W · ${spot.access}`;
   $('#detail-location').innerHTML = spots
     .map(
       (s) =>
@@ -973,13 +785,11 @@ function applyRoute() {
     id = route.startsWith('spot/') ? decodeURIComponent(route.slice(5)) : null;
   } catch {}
   const next =
-    route === 'journal'
-      ? 'journal'
-      : route === 'settings'
-        ? 'settings'
-        : id && spots.some((s) => s.id === id)
-          ? 'location'
-          : 'atlas';
+    route === 'settings'
+      ? 'settings'
+      : id && spots.some((s) => s.id === id)
+        ? 'location'
+        : 'atlas';
   const changed = next !== currentPage || (next === 'location' && id !== selected);
   if (next === 'location') {
     if (!atlasCamera) atlasCamera = { zoom, panX, panY };
@@ -1004,13 +814,10 @@ function applyRoute() {
   document.body.dataset.page = next;
   $('#atlas-view').hidden = next !== 'atlas';
   $('#location-view').hidden = next !== 'location';
-  $('#journal-view').hidden = next !== 'journal';
   $('#settings-view').hidden = next !== 'settings';
   $('#atlas-tab').classList.toggle('selected', next === 'atlas' || next === 'location');
-  $('#journal-tab').classList.toggle('selected', next === 'journal');
   $('#settings-tab').classList.toggle('selected', next === 'settings');
-  if (next === 'journal') renderJournal();
-  else if (next !== 'settings') {
+  if (next !== 'settings') {
     render();
     if (next === 'location') loadDetails(selected);
   }
@@ -1021,17 +828,11 @@ function applyRoute() {
   document.title =
     next === 'location'
       ? getSpot().name + ' — Hengelen'
-      : next === 'journal'
-        ? 'Journal — Hengelen'
-        : next === 'settings'
-          ? 'Settings — Hengelen'
-          : 'Hengelen — Field atlas';
+      : next === 'settings'
+        ? 'Settings — Hengelen'
+        : 'Hengelen — Field atlas';
 }
-function switchView(journal) {
-  navigate(journal ? 'journal' : 'atlas');
-}
-$('#atlas-tab').onclick = () => switchView(false);
-$('#journal-tab').onclick = () => switchView(true);
+$('#atlas-tab').onclick = () => navigate('atlas');
 $('#settings-tab').onclick = () => navigate('settings');
 $('#back-atlas').onclick = () => navigate('atlas');
 $('#detail-location').onchange = (e) => selectSpot(e.target.value);
@@ -1045,182 +846,7 @@ document.addEventListener('pointerdown', (e) => {
     dismissAtlasPreview();
 });
 
-function renderJournal() {
-  $('#journal-count').textContent = String(entries.length).padStart(2, '0');
-  $('#entries').innerHTML = entries.length
-    ? entries
-        .slice()
-        .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
-        .map(
-          (e) =>
-            `<article class="entry"><div class="entry-actions"><button data-edit="${e.id}">Edit</button><button data-delete="${e.id}">Delete</button></div><small>${esc(e.date)}${e.time ? ' · ' + esc(e.time) : ''} / ${esc(e.spot)}</small><h3>${esc(e.catch || 'Time on the water')}</h3><div class="observation-summary">${observationTags(e.observations)}</div><p>${esc(e.notes || 'No notes added.')}</p></article>`,
-        )
-        .join('')
-    : '<p class="empty-journal">No trips yet. A blank page is a good place to start.<br>Log a session, even if all you caught was a little practice.</p>';
-  $('#entries')
-    .querySelectorAll('[data-delete]')
-    .forEach(
-      (b) =>
-        (b.onclick = async () => {
-          if (
-            !confirm(
-              'Delete this journal entry? A previous copy is kept in your local backup file.',
-            )
-          )
-            return;
-          if (
-            await persist({ ...local, entries: entries.filter((e) => e.id !== b.dataset.delete) })
-          )
-            renderJournal();
-        }),
-    );
-  $('#entries')
-    .querySelectorAll('[data-edit]')
-    .forEach((b) => (b.onclick = () => openTrip(entries.find((e) => e.id === b.dataset.edit))));
-}
-function tripForecastNote(
-  spot = getSpot(),
-  date = $('#trip-date').value,
-  time = $('#trip-time').value,
-) {
-  const requested = `${date} · ${time} Pacific`,
-    forecastTime = forecastTimeFor(weatherById[spot.id]?.hours, date, time),
-    detail = detailsById[spot.id];
-  if (forecastTime === null)
-    return `FORECAST CONTEXT — ${spot.name}
-Session: ${requested}
-Forecast unavailable for this date and time. No unrelated conditions were attached.
-Saved forecast context, not an observation.
-
-ON THE WATER
-Actual wind / casting comfort:
-Water clarity:
-Bait seen / fish activity:
-Fly / retrieve / lessons: `;
-  const c = atTime(weatherById[spot.id]?.hours, forecastTime),
-    tide = displayTideAt(detail, forecastTime);
-  return `FORECAST CONTEXT — ${spot.name}
-Session: ${requested}
-Forecast hour: ${pacificDate(forecastTime)} · ${clock(forecastTime)} Pacific
-Wind ${fmt(c?.wind, 0)} kn, gusts ${fmt(c?.gust, 0)} kn, from ${directionName(c?.direction)} (${weatherMeta[spot.id]?.status ?? 'unavailable'}).
-Tide ${tide?.estimated ? 'approximately ' : ''}${fmt(tide?.value)} ft MLLW (${detail?.tides.status ?? 'unavailable'}); reference: ${detail?.spot.tideStation?.name ?? 'unavailable'}.
-Saved forecast context, not an observation.
-
-ON THE WATER
-Actual wind / casting comfort:
-Water clarity:
-Bait seen / fish activity:
-Fly / retrieve / lessons: `;
-}
-function openTrip(entry = null) {
-  if (!stateReady) {
-    notice('Local data is unavailable. Reload before saving a trip.');
-    return;
-  }
-  editingTrip = entry?.id ?? null;
-  tripDraftVersion++;
-  tripSnapshotPrefix = null;
-  $('#trip-form').reset();
-  const names = [...new Set([...spots.map((s) => s.name), ...(entry ? [entry.spot] : [])])];
-  $('#trip-spot').innerHTML = names
-    .map(
-      (name) =>
-        `<option ${name === (entry?.spot ?? getSpot().name) ? 'selected' : ''}>${esc(name)}</option>`,
-    )
-    .join('');
-  $('#trip-date').value = entry?.date ?? pacificDate(timestamp());
-  $('#trip-time').value = entry ? entry.time || '' : inputClock(timestamp());
-  $('#trip-catch').value = entry?.catch ?? '';
-  const observations = entry?.observations ?? {};
-  $('#trip-comfort').value = observations.comfort ?? '';
-  $('#trip-wind').value = observations.actualWind ?? '';
-  $('#trip-clarity').value = observations.clarity ?? '';
-  $('#trip-bait').value = observations.bait ?? '';
-  $('#trip-encounters').value = observations.encounters ?? '';
-  $('#trip-notes').value = entry?.notes ?? tripForecastNote();
-  if (!entry) tripSnapshotPrefix = forecastPrefix($('#trip-notes').value);
-  $('#trip-dialog').showModal();
-}
-function forecastPrefix(note) {
-  const end = note.indexOf('\n\nON THE WATER');
-  return end < 0 ? '' : note.slice(0, end + 2);
-}
-function refreshTripSnapshot(spot) {
-  const notes = $('#trip-notes');
-  if (tripSnapshotPrefix && notes.value.startsWith(tripSnapshotPrefix)) {
-    const next = forecastPrefix(
-      tripForecastNote(spot, $('#trip-date').value, $('#trip-time').value),
-    );
-    notes.value = next + notes.value.slice(tripSnapshotPrefix.length);
-    tripSnapshotPrefix = next;
-  }
-}
-async function refreshTripContext() {
-  if (editingTrip) return; // Existing journal entries retain their recorded observations.
-  const version = ++tripDraftVersion,
-    spot = spots.find((s) => s.name === $('#trip-spot').value);
-  if (!spot) return;
-  refreshTripSnapshot(spot);
-  await loadDetails(spot.id);
-  if (version === tripDraftVersion && $('#trip-dialog').open && $('#trip-spot').value === spot.name)
-    refreshTripSnapshot(spot);
-}
-$('#trip-spot').onchange = refreshTripContext;
-$('#trip-date').onchange = refreshTripContext;
-$('#trip-time').onchange = refreshTripContext;
-$('#new-entry').onclick = () => openTrip();
-$('#trip-form').onsubmit = async (e) => {
-  e.preventDefault();
-  const entry = {
-    id: editingTrip ?? crypto.randomUUID(),
-    spot: $('#trip-spot').value,
-    date: $('#trip-date').value,
-    time: $('#trip-time').value,
-    catch: $('#trip-catch').value.trim(),
-    notes: $('#trip-notes').value.trim(),
-    observations: {
-      comfort: $('#trip-comfort').value,
-      actualWind: $('#trip-wind').value,
-      clarity: $('#trip-clarity').value,
-      bait: $('#trip-bait').value,
-      encounters: $('#trip-encounters').value,
-    },
-  };
-  const next = editingTrip
-    ? entries.map((e) => (e.id === editingTrip ? entry : e))
-    : [...entries, entry];
-  if (!(await persist({ ...local, entries: next }))) return;
-  $('#trip-dialog').close();
-  renderJournal();
-  switchView(true);
-};
 async function boot() {
-  try {
-    applyLocal(await api('/api/state'));
-    stateReady = true;
-    if (local.revision === 0) {
-      const oldSpots = read('hengelen-spots', []),
-        oldEntries = read('hengelen-journal', []),
-        oldLimit = read('hengelen-limit', 10);
-      if (oldSpots.length || oldEntries.length || oldLimit !== 10) {
-        const imported = oldSpots.map((s) => ({
-          ...s,
-          referenceId: presets.reduce((a, b) => (distanceMiles(s, a) < distanceMiles(s, b) ? a : b))
-            .id,
-          exposure: s.exposure === 'Open coast' ? 'Open coast' : 'Bay shoreline',
-        }));
-        await persist({
-          ...local,
-          spots: imported,
-          entries: oldEntries,
-          prefs: { windLimit: oldLimit },
-        });
-      }
-    }
-  } catch (e) {
-    notice(e.message);
-  }
-  renderJournal();
   applyRoute();
   await Promise.all([loadOverview(), ...(selected ? [loadDetails(selected)] : [])]);
 }

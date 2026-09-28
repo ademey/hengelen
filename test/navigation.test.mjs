@@ -66,7 +66,7 @@ function setup() {
   const selectStart = app.indexOf('function selectSpot(');
   vm.runInContext(app.slice(selectStart, app.indexOf("$('#hour')", selectStart)), context);
   vm.runInContext(
-    app.slice(app.indexOf('function navigate('), app.indexOf('\nfunction renderJournal(')),
+    app.slice(app.indexOf('function navigate('), app.indexOf('\nasync function boot(')),
     context,
   );
   return { context, $, events };
@@ -111,19 +111,16 @@ test('spot navigation opens details and returning restores the atlas camera', ()
   assert.equal(c.panY, -18);
   assert.equal($('#atlas-map-slot').child, $('#map-panel'));
 });
-test('journal, settings, direct links, and hash navigation show the right page', () => {
+test('settings, direct links, and hash navigation show the right page', () => {
   const { context: c, $, events } = setup();
-  vm.runInContext("navigate('journal')", c);
-  assert.equal($('#journal-view').hidden, false);
-  assert.equal($('#location-view').hidden, true);
   vm.runInContext("navigate('settings')", c);
   assert.equal(c.currentPage, 'settings');
   assert.equal($('#settings-view').hidden, false);
-  assert.equal($('#journal-view').hidden, true);
+  assert.equal($('#location-view').hidden, true);
   c.location.hash = '#spot/crissy';
   events.hashchange();
   assert.equal(c.currentPage, 'location');
-  assert.equal($('#journal-view').hidden, true);
+  assert.equal($('#settings-view').hidden, true);
   c.location.hash = '#atlas';
   events.hashchange();
   assert.equal(c.currentPage, 'atlas');
