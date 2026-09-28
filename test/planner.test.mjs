@@ -69,7 +69,13 @@ test('missing references are provisional and stale tide is not used for ranking'
   assert.ok(stale.every((w) => !w.reasons.some((r) => r.startsWith('Tide '))));
   const good = fishingWindows(input);
   assert.ok(good.every((w) => !w.provisional));
-  assert.ok(good[0].lowLight);
+  assert.ok(good.every((w) => !('lowLight' in w)));
+  assert.ok(good.every((w) => !w.reasons.some((r) => /sunrise|sunset/i.test(r))));
+  assert.equal(good[0].start, 0); // ties now break by start time, not by light
+  // No daylight bonus: otherwise-identical sunrise, midday, and sunset windows tie.
+  const byStart = new Map(good.map((w) => [w.start, w]));
+  assert.equal(byStart.get(0).score, byStart.get(18000).score);
+  assert.equal(byStart.get(18000).score, byStart.get(36000).score);
 });
 test('suggestions do not overlap and ocean swell gaps remain explicit', () => {
   const windows = distinctWindows(fishingWindows(input));

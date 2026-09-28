@@ -30,13 +30,6 @@ export function fishingWindows({
       cautions = [],
       missing = [];
     let score = 0;
-    const lowLight = start - sun.sunrise <= 5400 || sun.sunset - end <= 5400;
-    if (lowLight) {
-      score += 3;
-      reasons.push(
-        start - sun.sunrise <= 5400 ? 'Early daylight, near sunrise' : 'Late daylight, near sunset',
-      );
-    }
     const wind = Math.max(...pair.map((r) => r.wind)),
       gust = Math.max(...pair.map((r) => r.gust));
     reasons.push(`Wind ${wind.toFixed(0)} kn · gusts ${gust.toFixed(0)} kn`);
@@ -106,7 +99,6 @@ export function fishingWindows({
       missing,
       provisional,
       score: score - missing.length * 0.5,
-      lowLight,
     });
   }
   return out.sort(
