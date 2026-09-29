@@ -8,6 +8,10 @@ Run `npm install` once, then `npm run dev` and open http://127.0.0.1:4317. Requi
 
 The server binds to loopback by default; to host it publicly, set `HENGELEN_HOST=0.0.0.0` (or `HOST`) and `HENGELEN_ALLOWED_HOSTS` to your public hostname. Allowlist entries are plain hostnames without ports — the server strips any port from the request's `Host` header before matching. Set `HENGELEN_HSTS=1` when serving behind HTTPS.
 
+## Kiosk mode
+
+Append `?kiosk=1` to the URL for a touchscreen-optimized layout (built for a 1024×600 Raspberry Pi display): on location pages the tide chart moves above the fold, chart labels and touch targets grow to finger size, text selection is disabled on interactive surfaces, and dragging across the chart scrubs the selected hour. Desktop and mobile layouts are unchanged when the parameter is absent. For a true fullscreen kiosk, launch Chromium with e.g. `chromium --kiosk --touch-events=enabled "https://your-host/?kiosk=1#spot/stinson"`.
+
 ## Project layout
 
 - `src/`: authored browser code, HTML, and CSS.
