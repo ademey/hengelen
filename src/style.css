@@ -1800,6 +1800,11 @@ body:not([data-page='location']) #source-toggle {
 }
 #detail-sessions .session-card button {
   font-size: 15px;
+  /* Session cards are dense: override the app-wide line-height: 2. */
+  line-height: 1.4;
+}
+#detail-sessions .window > .eyebrow {
+  line-height: 1.6;
 }
 #detail-sessions .session-card ul {
   font-size: 12px;
