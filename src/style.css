@@ -133,11 +133,6 @@ main#atlas-view {
   display: flex;
   flex-direction: column;
 }
-.index-title {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-}
 .index h1 {
   font-size: 20px;
   line-height: 1.45;
@@ -2614,12 +2609,12 @@ body[data-page='atlas'] .map-key span:not(:first-child) {
     border-top: 0;
     border-right: 1px solid var(--rule);
   }
-  .index h1,
   .index .intro {
     display: none;
   }
-  .index-title {
-    padding-bottom: 5px;
+  .index h1 {
+    font-size: 18px;
+    margin: 0 0 8px;
   }
   body[data-page='atlas'] #spot-list {
     display: block;
