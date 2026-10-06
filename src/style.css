@@ -1800,7 +1800,7 @@ body:not([data-page='location']) #source-toggle {
 }
 #detail-sessions .session-card button {
   font-size: 15px;
-  /* Session cards are dense: override the app-wide line-height: 2. */
+  /* Session cards are dense: tighten the inherited line-height of 1.5. */
   line-height: 1.4;
 }
 #detail-sessions .window > .eyebrow {
