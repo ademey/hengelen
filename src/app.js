@@ -754,15 +754,26 @@ $('#map').addEventListener('keydown', (e) => {
     renderMap();
   }
 });
-// Below this viewport height the suggested-sessions disclosure starts
-// collapsed so the forecast section keeps a predictable height (#37).
+// Suggested sessions live in a disclosure so short viewports get a
+// predictable forecast section height (#37). It starts collapsed below
+// SHORT_VIEWPORT_HEIGHT, but a manual toggle is remembered and survives
+// re-renders and resizes.
 const SHORT_VIEWPORT_HEIGHT = 740;
 const shortViewport = matchMedia(`(max-height: ${SHORT_VIEWPORT_HEIGHT}px)`);
-function syncSessionsDisclosure() {
+let sessionsUserOpen = null; // null until the user toggles the disclosure
+let syncingDisclosure = false; // true while setting .open programmatically
+function applySessionsDisclosure() {
   const disclosure = document.querySelector('#detail-sessions .sessions-disclosure');
-  if (disclosure) disclosure.open = !shortViewport.matches;
+  if (!disclosure) return;
+  syncingDisclosure = true;
+  disclosure.open = sessionsUserOpen ?? !shortViewport.matches;
+  syncingDisclosure = false;
 }
-shortViewport.addEventListener('change', syncSessionsDisclosure);
+shortViewport.addEventListener('change', () => {
+  // A viewport change only re-applies the default while the user hasn't
+  // chosen for themselves.
+  if (sessionsUserOpen === null) applySessionsDisclosure();
+});
 function layoutLocation() {
   const spot = getSpot();
   $('#detail-title').textContent = spot.name;
@@ -792,11 +803,15 @@ function layoutLocation() {
     const count = sessionWindow.querySelectorAll('.session-card').length;
     summary.append(car, ` ${count} SUGGESTED SESSION${count === 1 ? '' : 'S'}`);
     disclosure.append(summary, sessionWindow);
+    disclosure.addEventListener('toggle', () => {
+      // The toggle event also fires for programmatic .open sets, which we skip.
+      if (!syncingDisclosure) sessionsUserOpen = disclosure.open;
+    });
     $('#detail-sessions').replaceChildren(disclosure);
   } else {
     $('#detail-sessions').replaceChildren();
   }
-  syncSessionsDisclosure();
+  applySessionsDisclosure();
   inspector
     .querySelectorAll(':scope > .spot-title,:scope > h2,:scope > .location-sub')
     .forEach((el) => el.remove());

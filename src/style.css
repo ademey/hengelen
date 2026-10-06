@@ -1907,35 +1907,36 @@ body:not([data-page='location']) #source-toggle {
     position: static;
   }
   /* Mobile forecast-first order: title, forecast, metrics, mini-map, about.
-     The hero is flattened so its children interleave with the planning section. */
+     The hero is flattened so its children interleave with the planning
+     section. Scoped under #location-view to beat the later 760px rules. */
   #location-view {
     display: flex;
     flex-direction: column;
     padding: 16px;
   }
-  .detail-hero {
+  #location-view > .detail-hero {
     display: contents;
   }
-  .detail-nav {
+  #location-view > .detail-nav {
     order: -1;
     align-items: flex-start;
     gap: 8px;
   }
-  .detail-title-block {
+  #location-view > .detail-title-block {
     order: 0;
   }
-  .detail-planning {
+  #location-view > .detail-planning {
     order: 1;
   }
-  #detail-metrics {
+  #location-view > #detail-metrics {
     order: 2;
   }
-  #detail-map-slot {
+  #location-view > #detail-map-slot {
     order: 3;
     height: 220px;
     width: 100%;
   }
-  #location-information {
+  #location-view > #location-information {
     order: 4;
   }
   .detail-hero h1 {
@@ -1947,8 +1948,10 @@ body:not([data-page='location']) #source-toggle {
   .detail-planning .timeline-top {
     display: block;
   }
-  /* Compact day strip: one scrollable row instead of a wrapping grid. */
+  /* Compact day strip: one scrollable row instead of a wrapping grid.
+     display:flex is set explicitly to beat the later grid rule. */
   .detail-planning .days {
+    display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
     overflow-x: auto;
