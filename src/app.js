@@ -754,6 +754,15 @@ $('#map').addEventListener('keydown', (e) => {
     renderMap();
   }
 });
+// Below this viewport height the suggested-sessions disclosure starts
+// collapsed so the forecast section keeps a predictable height (#37).
+const SHORT_VIEWPORT_HEIGHT = 740;
+const shortViewport = matchMedia(`(max-height: ${SHORT_VIEWPORT_HEIGHT}px)`);
+function syncSessionsDisclosure() {
+  const disclosure = document.querySelector('#detail-sessions .sessions-disclosure');
+  if (disclosure) disclosure.open = !shortViewport.matches;
+}
+shortViewport.addEventListener('change', syncSessionsDisclosure);
 function layoutLocation() {
   const spot = getSpot();
   $('#detail-title').textContent = spot.name;
@@ -770,7 +779,24 @@ function layoutLocation() {
   $('#detail-metrics').replaceChildren(
     ...inspector.querySelectorAll(':scope > .metrics,:scope > .assessment'),
   );
-  $('#detail-sessions').replaceChildren(...inspector.querySelectorAll(':scope > .window'));
+  // Suggested sessions live in a disclosure so short viewports get a
+  // predictable forecast height; the session count stays visible (#37).
+  const sessionWindow = inspector.querySelector(':scope > .window');
+  if (sessionWindow) {
+    const disclosure = document.createElement('details');
+    disclosure.className = 'sessions-disclosure';
+    const summary = document.createElement('summary');
+    const car = document.createElement('span');
+    car.className = 'car';
+    car.textContent = '▸';
+    const count = sessionWindow.querySelectorAll('.session-card').length;
+    summary.append(car, ` ${count} SUGGESTED SESSION${count === 1 ? '' : 'S'}`);
+    disclosure.append(summary, sessionWindow);
+    $('#detail-sessions').replaceChildren(disclosure);
+  } else {
+    $('#detail-sessions').replaceChildren();
+  }
+  syncSessionsDisclosure();
   inspector
     .querySelectorAll(':scope > .spot-title,:scope > h2,:scope > .location-sub')
     .forEach((el) => el.remove());
