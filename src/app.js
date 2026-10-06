@@ -754,6 +754,26 @@ $('#map').addEventListener('keydown', (e) => {
     renderMap();
   }
 });
+// Suggested sessions live in a disclosure so short viewports get a
+// predictable forecast section height (#37). It starts collapsed below
+// SHORT_VIEWPORT_HEIGHT, but a manual toggle is remembered and survives
+// re-renders and resizes.
+const SHORT_VIEWPORT_HEIGHT = 740;
+const shortViewport = matchMedia(`(max-height: ${SHORT_VIEWPORT_HEIGHT}px)`);
+let sessionsUserOpen = null; // null until the user toggles the disclosure
+let syncingDisclosure = false; // true while setting .open programmatically
+function applySessionsDisclosure() {
+  const disclosure = document.querySelector('#detail-sessions .sessions-disclosure');
+  if (!disclosure) return;
+  syncingDisclosure = true;
+  disclosure.open = sessionsUserOpen ?? !shortViewport.matches;
+  syncingDisclosure = false;
+}
+shortViewport.addEventListener('change', () => {
+  // A viewport change only re-applies the default while the user hasn't
+  // chosen for themselves.
+  if (sessionsUserOpen === null) applySessionsDisclosure();
+});
 function layoutLocation() {
   const spot = getSpot();
   $('#detail-title').textContent = spot.name;
@@ -770,7 +790,28 @@ function layoutLocation() {
   $('#detail-metrics').replaceChildren(
     ...inspector.querySelectorAll(':scope > .metrics,:scope > .assessment'),
   );
-  $('#detail-sessions').replaceChildren(...inspector.querySelectorAll(':scope > .window'));
+  // Suggested sessions live in a disclosure so short viewports get a
+  // predictable forecast height; the session count stays visible (#37).
+  const sessionWindow = inspector.querySelector(':scope > .window');
+  if (sessionWindow) {
+    const disclosure = document.createElement('details');
+    disclosure.className = 'sessions-disclosure';
+    const summary = document.createElement('summary');
+    const car = document.createElement('span');
+    car.className = 'car';
+    car.textContent = '▸';
+    const count = sessionWindow.querySelectorAll('.session-card').length;
+    summary.append(car, ` ${count} SUGGESTED SESSION${count === 1 ? '' : 'S'}`);
+    disclosure.append(summary, sessionWindow);
+    disclosure.addEventListener('toggle', () => {
+      // The toggle event also fires for programmatic .open sets, which we skip.
+      if (!syncingDisclosure) sessionsUserOpen = disclosure.open;
+    });
+    $('#detail-sessions').replaceChildren(disclosure);
+  } else {
+    $('#detail-sessions').replaceChildren();
+  }
+  applySessionsDisclosure();
   inspector
     .querySelectorAll(':scope > .spot-title,:scope > h2,:scope > .location-sub')
     .forEach((el) => el.remove());

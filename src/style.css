@@ -1664,6 +1664,19 @@ body:not([data-page='location']) #source-toggle {
   padding-bottom: 28px;
   border-bottom: 1px solid var(--rule);
 }
+/* Title and metrics stack in the first column; the mini-map spans both rows. */
+.detail-title-block {
+  grid-column: 1;
+  grid-row: 1;
+}
+#detail-metrics {
+  grid-column: 1;
+  grid-row: 2;
+}
+.detail-hero #detail-map-slot {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
 .detail-hero h1 {
   font-size: 38px;
   font-weight: 400;
@@ -1766,6 +1779,37 @@ body:not([data-page='location']) #source-toggle {
   padding: 0;
   border-top: 0;
 }
+/* Suggested sessions collapse into a disclosure on short viewports so the
+   forecast section keeps a predictable height; the count stays visible. */
+.sessions-disclosure {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  margin-top: 12px;
+  background: var(--face);
+}
+.sessions-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+}
+.sessions-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.sessions-disclosure > summary .car {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.sessions-disclosure[open] > summary .car {
+  transform: rotate(90deg);
+}
+.sessions-disclosure .window {
+  border-top: 1px solid var(--rule);
+  padding: 0 12px;
+}
 #detail-sessions .session-card {
   padding: 14px 0;
 }
@@ -1862,12 +1906,38 @@ body:not([data-page='location']) #source-toggle {
     height: 650px;
     position: static;
   }
-  .detail-hero {
-    grid-template-columns: 1fr;
+  /* Mobile forecast-first order: title, forecast, metrics, mini-map, about.
+     The hero is flattened so its children interleave with the planning
+     section. Scoped under #location-view to beat the later 760px rules. */
+  #location-view {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
   }
-  #detail-map-slot {
+  #location-view > .detail-hero {
+    display: contents;
+  }
+  #location-view > .detail-nav {
+    order: -1;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  #location-view > .detail-title-block {
+    order: 0;
+  }
+  #location-view > .detail-planning {
+    order: 1;
+  }
+  #location-view > #detail-metrics {
+    order: 2;
+  }
+  #location-view > #detail-map-slot {
+    order: 3;
     height: 220px;
     width: 100%;
+  }
+  #location-view > #location-information {
+    order: 4;
   }
   .detail-hero h1 {
     font-size: 30px;
@@ -1878,15 +1948,26 @@ body:not([data-page='location']) #source-toggle {
   .detail-planning .timeline-top {
     display: block;
   }
+  /* Compact day strip: one scrollable row instead of a wrapping grid.
+     display:flex is set explicitly to beat the later grid rule. */
+  .detail-planning .days {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+  .detail-planning .days button {
+    flex: 0 0 auto;
+    min-width: 54px;
+  }
   #detail-sessions .window {
     display: block;
   }
   #location-information .inspector {
     columns: 1;
-  }
-  .detail-nav {
-    align-items: flex-start;
-    gap: 8px;
   }
   .detail-nav label {
     font-size: 0;
@@ -1894,9 +1975,6 @@ body:not([data-page='location']) #source-toggle {
   .detail-nav select {
     max-width: 190px;
     font-size: 11px;
-  }
-  #location-view {
-    padding: 16px;
   }
 }
 
@@ -2629,7 +2707,7 @@ body[data-kiosk='1'] .header-meta,
 body[data-kiosk='1'] .local {
   display: none;
 }
-/* Detail page: PLAN YOUR SESSION (day buttons, tide chart, hour slider, sessions) first. */
+/* Detail page: FORECAST (day buttons, tide chart, hour slider, sessions) first. */
 body[data-kiosk='1'] #location-view:not([hidden]) {
   display: flex;
   flex-direction: column;
