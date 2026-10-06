@@ -153,7 +153,6 @@ function renderList() {
   $('#spot-list')
     .querySelectorAll('[data-spot]')
     .forEach((b) => (b.onclick = () => selectSpot(b.dataset.spot)));
-  $('.index-title span:last-child').textContent = `01—${String(spots.length).padStart(2, '0')}`;
 }
 const project = (lon, lat) => {
   let x = ((lon + 122.85) / 0.77) * 780;
