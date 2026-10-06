@@ -1924,6 +1924,14 @@ body:not([data-page='location']) #source-toggle {
   #location-view > #location-information {
     order: 4;
   }
+  /* Gentle scroll-snap so the forecast section lands in view on mobile.
+     Proximity (not mandatory) keeps it from fighting the user. */
+  html {
+    scroll-snap-type: y proximity;
+  }
+  #location-view > .detail-planning {
+    scroll-snap-align: start;
+  }
   .detail-hero h1 {
     font-size: 30px;
   }
