@@ -51,7 +51,9 @@ export function conditionsTimeline({
     const value = String(type ?? '').toLowerCase();
     return value.includes('flood') ? 'MAX FLOOD' : value.includes('ebb') ? 'MAX EBB' : 'SLACK';
   };
-  const currentMarker = (row, i) => {
+  // Current events are symbols only; a legend below the chart explains them.
+  // Text labels cluttered the tide track, especially on narrow screens.
+  const currentMarker = (row) => {
     const { event, tide } = row,
       cx = x(event.time),
       cy = ty(tide.value),
@@ -60,16 +62,13 @@ export function conditionsTimeline({
         Number.isFinite(event.speed) && label !== 'SLACK'
           ? ` ${Math.abs(event.speed).toFixed(1)} kn`
           : '';
-    const labelY = Math.max(45, Math.min(188, cy + (i % 2 ? -13 : 17)));
-    const anchor = cx > R - 85 ? 'end' : 'start',
-      textX = cx + (anchor === 'end' ? -7 : 7);
     const symbol =
       label === 'MAX FLOOD'
         ? `<path d="M${cx - 4} ${cy + 3}l4 -7 4 7Z" class="current-event-symbol"/>`
         : label === 'MAX EBB'
           ? `<path d="M${cx - 4} ${cy - 3}l4 7 4 -7Z" class="current-event-symbol"/>`
           : `<rect x="${cx - 3.5}" y="${cy - 3.5}" width="7" height="7" class="current-event-symbol slack"/>`;
-    return `<g data-current-event="${esc(label)}" data-tide-height="${tide.value.toFixed(2)}">${symbol}<path d="M${cx} ${cy}V${labelY + (labelY < cy ? 4 : -8)}" class="current-event-leader"/><text x="${textX}" y="${labelY}" text-anchor="${anchor}" class="current-event-label">${label}${speed}<title>${clock(event.time)} · ${label}${speed ? ` · ${speed.trim()}` : ''} at ${currentName}; marker height is tide ${tide.value.toFixed(1)} ft MLLW, not current speed</title></text></g>`;
+    return `<g data-current-event="${esc(label)}" data-tide-height="${tide.value.toFixed(2)}">${symbol}<title>${clock(event.time)} · ${label}${speed ? ` · ${speed.trim()}` : ''} at ${currentName}; marker height is tide ${tide.value.toFixed(1)} ft MLLW, not current speed</title></g>`;
   };
   const maxWind =
     Math.max(limit + 3, ...hours.flatMap((r) => [r.wind, r.gust]).filter(Number.isFinite)) + 2;
@@ -116,7 +115,7 @@ export function conditionsTimeline({
     .join('');
   const ticks = hours.filter((r, i) => i % 6 === 0).map((r) => r.time);
   ticks.push(end);
-  return `${estimated ? '<p class="estimated-tide-caption">Dashed curve: estimated between NOAA high/low predictions (dots). Heights between dots are approximate.</p>' : ''}${current.length ? `<p class="current-overlay-caption">Current markers: ${esc(currentName)}. Marker height follows the tide curve; current speed is written beside flood and ebb events.</p>` : ''}<svg viewBox="0 0 ${width} ${H}" class="conditions-chart-svg" role="img" aria-label="${estimated ? 'Estimated tide curve between NOAA high and low predictions. ' : ''}Tide height in feet with reference current events placed at the tide height for their time, plus wind and gusts in knots. Current marker height does not represent current speed. Shaded bands mark night and suggested sessions.">${night}${bands}
+  return `${estimated ? '<p class="estimated-tide-caption">Dashed curve: estimated between NOAA high/low predictions (dots). Heights between dots are approximate.</p>' : ''}${current.length ? `<p class="current-overlay-caption">▲ max flood · ▼ max ebb · ■ slack — ${esc(currentName)}. Marker height follows the tide curve; speeds in details below.</p>` : ''}<svg viewBox="0 0 ${width} ${H}" class="conditions-chart-svg" role="img" aria-label="${estimated ? 'Estimated tide curve between NOAA high and low predictions. ' : ''}Tide height in feet with reference current events placed at the tide height for their time, plus wind and gusts in knots. Current marker height does not represent current speed. Shaded bands mark night and suggested sessions.}"><rect x="6" y="30" width="34" height="322" class="y-axis-gutter"/>${night}${bands}
  <text x="${L}" y="20" class="track-title">TIDE · FT / MLLW${estimated ? ' · ESTIMATED' : ''}${tideStatus === 'stale' || (estimated && highLowStatus === 'stale') ? ' · CACHED' : ''}</text>${grids([lo, (lo + hi) / 2, hi], ty)}
  ${finite.length ? `<path d="${path(tideRows, 'value', ty, 900)}" class="tide-line${estimated ? ' estimated-tide-line' : ''}"/>` : `<text x="${L + 8}" y="125">${tideStatus === 'events-only' ? 'Not enough high/low data to estimate' : 'Tide curve unavailable'}</text>`}
  ${currentOnTide.map(currentMarker).join('')}

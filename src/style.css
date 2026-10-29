@@ -1413,18 +1413,8 @@ button:disabled {
 .current-event-symbol.slack {
   fill: var(--ink);
 }
-.current-event-leader {
-  stroke: var(--muted);
-  stroke-width: 0.7;
-  stroke-dasharray: 2 2;
-}
-.current-event-label {
-  font-size: 9px;
-  font-weight: 600;
-  paint-order: stroke;
-  stroke: var(--face);
-  stroke-width: 3px;
-  stroke-linejoin: round;
+.y-axis-gutter {
+  fill: var(--paper);
 }
 .tide-line,
 .wind-line,
@@ -1955,6 +1945,14 @@ body:not([data-page='location']) #source-toggle {
   .detail-planning .days button {
     flex: 0 0 auto;
     min-width: 54px;
+  }
+  /* Full-bleed chart on mobile: edge-to-edge with rules above and below. */
+  #conditions-chart {
+    margin-inline: -30px;
+    padding: 12px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: var(--face);
   }
   #detail-sessions .window {
     display: block;
