@@ -115,7 +115,7 @@ test('tide and wind share time coordinates and events-only tide without events s
   });
   assert.match(html, /TIDE · FT/);
   assert.match(html, /WIND · KN/);
-  assert.match(html, /Current markers: Golden Gate Bridge/);
+  assert.match(html, /▲ max flood · ▼ max ebb · ■ slack — Golden Gate Bridge/);
   assert.match(html, /data-current-event="MAX FLOOD" data-tide-height="0.50"/);
   assert.match(html, /data-current-event="SLACK" data-tide-height="1.00"/);
   assert.doesNotMatch(html, /CURRENT EVENTS · REFERENCE STATION/);
